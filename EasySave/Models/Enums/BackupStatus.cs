@@ -9,7 +9,7 @@ namespace EasySave.Models.Enums
         Inactive,
         Active,
         Completed,
-        Error,
-        Paused
+        Error
     }
 }
+
