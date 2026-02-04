@@ -4,7 +4,9 @@ using System.Text;
 
 namespace EasySave.Models.Enums
 {
-    internal class BackupType
+    public enum BackupType
     {
+        Full,
+        Differential
     }
 }
