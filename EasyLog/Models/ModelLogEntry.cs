@@ -4,7 +4,7 @@ using System.Text;
 
 namespace EasyLog.Models
 {
-    public class ModelLogEntry
+public class ModelLogEntry
     {
         public DateTime Timestamp { get; set; }
 
@@ -17,6 +17,7 @@ namespace EasyLog.Models
         public long FileSize { get; set; }
 
         public long TransferTimeMs { get; set; }
+
 
     }
 }
