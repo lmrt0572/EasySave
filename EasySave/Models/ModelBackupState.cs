@@ -9,7 +9,7 @@ namespace EasySave.Models
 
         public string JobName { get; set; } = string.Empty;
         public DateTime Timestamp { get; set; }
-        public BackupJobStatus Status { get; set; }
+        public BackupStatus Status { get; set; }
 
         // ===== ACTIVE JOB FIELDS =====
         public int TotalFilesToCopy { get; set; }
@@ -25,7 +25,7 @@ namespace EasySave.Models
         public BackupJobState()
         {
             Timestamp = DateTime.Now;
-            Status = BackupJobStatus.Inactive;
+            Status = BackupStatus.Inactive;
         }
 
         public BackupJobState(string jobName) : this()
@@ -44,7 +44,7 @@ namespace EasySave.Models
         }
         public void StartBackup(long totalFiles, long totalSize)
         {
-            Status = BackupJobStatus.Active;
+            Status = BackupStatus.Active;
             TotalFilesToCopy = (int)totalFiles;
             TotalFilesSize = totalSize;
             RemainingFiles = (int)totalFiles;
@@ -74,7 +74,7 @@ namespace EasySave.Models
 
         public void Finish()
         {
-            Status = BackupJobStatus.Completed;
+            Status = BackupStatus.Completed;
             Progression = 100;
             RemainingFiles = 0;
             RemainingFilesSize = 0;
@@ -85,7 +85,7 @@ namespace EasySave.Models
 
         public void SetError()
         {
-            Status = BackupJobStatus.Error;
+            Status = BackupStatus.Error;
             Timestamp = DateTime.Now;
         }
     }

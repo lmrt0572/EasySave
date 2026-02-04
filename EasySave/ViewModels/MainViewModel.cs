@@ -4,7 +4,7 @@ using System.Text;
 
 namespace EasySave.ViewModels
 {
-    internal class MainViewModel
+    public class MainViewModel
     {
     }
 }
