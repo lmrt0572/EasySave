@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using System.Text;
 using System.Text.Json;
+using System;
 using System.IO;
+using System.Text.Json;
 using EasyLog.Models;
 
 namespace EasyLog.Services
@@ -16,7 +18,7 @@ namespace EasyLog.Services
 
         // ===== PRIVATE MEMBERS =====
         private readonly string _logDirectory;
-        private StreamWriter? _currentWritter;
+        private StreamWritter? _currentWritter;
         private string? _currentLogFile;
         private readonly object _lockObject = new object();
 
@@ -38,7 +40,7 @@ namespace EasyLog.Services
             lock (_lockObject)
                 {
                     string today = DateTime.Now.ToString("yyyy-MM-dd");
-                    string todayFile = Path.Combine(_logDirectory, $"log_{today}.json");
+                    string todayFile = Path.Combine(_logDirectory, $"{today}.json");
                     if (_currentLogFile != todayFile)
                     {
                         _currentWritter?.Close();
