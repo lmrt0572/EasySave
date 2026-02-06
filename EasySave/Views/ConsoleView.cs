@@ -126,8 +126,6 @@ namespace EasySave.Views
             // ----- Bottom border and hint
             DrawSeparator('=');
             Console.WriteLine();
-            DisplayMessage("menu_hint");
-            Console.WriteLine();
         }
 
         private void DrawMenuItem(string textKey, bool isSelected)
@@ -326,7 +324,6 @@ namespace EasySave.Views
         public void WaitForKey()
         {
             Console.WriteLine();
-            DisplayMessage("prompt_continue");
             Console.ReadKey(intercept: true);
         }
 
