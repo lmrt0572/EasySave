@@ -43,7 +43,7 @@ namespace EasySave.Services
             _totalFiles = files.Length;
             _completedFiles = 0;
 
-            // --- State Startup ---
+            // --- State Startup & Persistence ---
             state.StartBackup(_totalFiles, totalSize);
             _stateService.UpdateJobState(state);
             StateUpdated?.Invoke(state);
@@ -51,7 +51,7 @@ namespace EasySave.Services
             Console.WriteLine($"\n  Starting: {job.Name} ({_totalFiles} files)");
             DisplayProgressBar(job.Name);
 
-            // --- Strategy Execution ---
+            // --- Strategy Execution Loop ---
             _strategy.Execute(job, (source, target, size, timeMs) =>
             {
                 _currentFile = source;
@@ -85,7 +85,7 @@ namespace EasySave.Services
                 });
             });
 
-            // --- Finalization ---
+            // --- Job Finalization ---
             state.Finish();
             _stateService.UpdateJobState(state);
             StateUpdated?.Invoke(state);
@@ -94,7 +94,7 @@ namespace EasySave.Services
             _logService.Flush();
         }
 
-        // ===== PRIVATE UI HELPERS =====
+        // ===== PROGRESS BAR =====
         private void DisplayProgressBar(string jobName)
         {
             double progress = _totalFiles > 0 ? ((double)_completedFiles / _totalFiles) * 100 : 100;
