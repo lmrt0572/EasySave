@@ -7,21 +7,25 @@ using EasySave.ViewModels;
 
 namespace EasySave.Views
 {
+    // ===== CONSOLE VIEW =====
     public class ConsoleView
     {
+        // ===== CONSTANTS =====
         private const int MenuOptionCount = 6;
         private const int BoxWidth = 50;
 
+        // ===== PRIVATE MEMBERS =====
         private readonly MainViewModel _viewModel;
         private readonly LanguageManager _lang;
 
+        // ===== CONSTRUCTOR =====
         public ConsoleView(MainViewModel viewModel)
         {
             _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
             _lang = viewModel.GetLanguageManager();
         }
 
-        // ==================== MAIN MENU LOOP ====================
+        // ===== MAIN MENU LOOP =====
 
         public void Run()
         {
@@ -93,7 +97,7 @@ namespace EasySave.Views
             return index == 5;
         }
 
-        // ==================== MENU DRAWING ====================
+        // ===== MENU DRAWING =====
 
         private void DrawMenu(int selectedIndex)
         {
@@ -160,7 +164,7 @@ namespace EasySave.Views
             Console.WriteLine("  " + new string(character, width));
         }
 
-        // ==================== JOB LISTS ====================
+        // ===== JOB LISTS =====
 
         public void DisplayJobList()
         {
@@ -218,7 +222,7 @@ namespace EasySave.Views
             Console.WriteLine();
         }
 
-        // ==================== USER INPUTS ====================
+        // ===== USER INPUTS =====
 
         private void RunCreateJob()
         {
@@ -286,7 +290,7 @@ namespace EasySave.Views
             DisplaySuccess("language_changed");
         }
 
-        // ==================== DISPLAY HELPERS ====================
+        // ===== DISPLAY HELPERS =====
 
         private void DisplayMessage(string textKey, bool useTranslation = true)
         {
@@ -313,7 +317,7 @@ namespace EasySave.Views
             Console.ResetColor();
         }
 
-        // ==================== INPUT HELPERS ====================
+        // ===== INPUT HELPERS =====
 
         private string PromptUser(string promptKey)
         {
@@ -327,7 +331,7 @@ namespace EasySave.Views
             Console.ReadKey(intercept: true);
         }
 
-        // ==================== ESCAPE SEQUENCE DETECTION ====================
+        // ===== ESCAPE SEQUENCE DETECTION =====
 
         private static bool IsEscapeSequenceUp(ConsoleKeyInfo key)
         {

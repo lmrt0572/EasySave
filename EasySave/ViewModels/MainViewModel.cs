@@ -1,11 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
 using EasySave.Localization;
 using EasySave.Models;
-using EasySave.Models.Enums;
+using EasySave.Models.Enums; 
 using EasySave.Services;
 using EasySave.Strategies;
 using EasySave.Utils;
@@ -42,10 +42,10 @@ namespace EasySave.ViewModels
             LoadJobs();
         }
 
-        // LANGUAGE 
+        // ===== LANGUAGE =====
         public LanguageManager GetLanguageManager() => _languageManager;
 
-        //  JOB MANAGEMENT 
+        // ===== JOB MANAGEMENT ===== 
 
         public List<BackupJob> GetAllJobs() => _jobs.ToList();
 
@@ -111,7 +111,7 @@ namespace EasySave.ViewModels
             return true;
         }
 
-        //  EXECUTION 
+        // ===== EXECUTION ===== 
 
         public void ExecuteJob(int index)
         {
@@ -159,7 +159,7 @@ namespace EasySave.ViewModels
             execution.Execute(job);
         }
 
-        //  CLI MODE 
+        // ===== CLI MODE ===== 
 
         public void RunCli(string[] args)
         {
@@ -228,7 +228,7 @@ namespace EasySave.ViewModels
             ExecuteSelectedJobs(validIndices);
         }
 
-        //  PERSISTENCE 
+        // ===== PERSISTENCE ===== 
 
         private void LoadJobs()
         {
@@ -271,7 +271,7 @@ namespace EasySave.ViewModels
             File.WriteAllText(_configPath, json);
         }
 
-        //  DTO for JSON serialization 
+        // ===== DTO ===== 
         private class BackupJobDto
         {
             public string? Name { get; set; }

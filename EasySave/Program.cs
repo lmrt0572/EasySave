@@ -5,8 +5,10 @@ using EasySave.Views;
 
 namespace EasySave
 {
+    // ===== PROGRAM =====
     class Program
     {
+        // ===== MAIN =====
         static void Main(string[] args)
         {
             try
@@ -19,15 +21,14 @@ namespace EasySave
                 // ===== MODE SELECTION =====
                 if (args.Length > 0)
                 {
-                    // CLI Mode: EasySave.exe 1-3 or EasySave.exe 1;3;5
                     RunCliMode(viewModel, args);
                 }
                 else
                 {
-                    // Interactive Mode: Menu
                     view.Run();
                 }
             }
+            // ===== ERROR HANDLING =====
             catch (Exception ex)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
@@ -37,6 +38,7 @@ namespace EasySave
             }
         }
 
+        // ===== CLI MODE =====
         static void RunCliMode(MainViewModel viewModel, string[] args)
         {
             var lang = viewModel.GetLanguageManager();
