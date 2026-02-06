@@ -42,7 +42,7 @@ The project follows professional software development practices with a focus on 
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/your-organization/EasySave.git
+   git clone https://github.com/lmrt0572/EasySave.git
    ```
 3. Open the solution in Visual Studio 2022
 4. Restore NuGet packages if needed
