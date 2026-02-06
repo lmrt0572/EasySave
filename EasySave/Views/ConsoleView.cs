@@ -243,7 +243,20 @@ namespace EasySave.Views
                 return;
             }
 
-            _viewModel.CreateJob(name, source, target, int.Parse(typeInput));
+            bool created = _viewModel.CreateJob(name, source, target, int.Parse(typeInput));
+            if (!created)
+            {
+                // Specific feedback requested: max jobs reached
+                if (_viewModel.GetJobCount() >= 5)
+                {
+                    DisplayError("error_max_jobs");
+                    return;
+                }
+
+                DisplayError("error_invalid_choice");
+                return;
+            }
+
             DisplaySuccess("job_created");
         }
 

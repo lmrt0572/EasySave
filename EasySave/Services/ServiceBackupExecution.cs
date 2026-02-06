@@ -1,27 +1,30 @@
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
 using EasyLog.Models;
 using EasyLog.Services;
 using EasySave.Models;
 using EasySave.Models.Enums;
 using EasySave.Strategies;
-using System;
-using System.Diagnostics;
-using System.Drawing;
-using System.IO;
-using System.Linq;
 
 namespace EasySave.Services
 {
     public class ServiceBackupExecution
     {
+        // ===== PRIVATE FIELDS =====
         private readonly IBackupStrategy _strategy;
         private readonly ILogService _logService;
         private readonly IStateService _stateService;
-
-        // Progress tracking (internal)
         private int _totalFiles;
         private int _completedFiles;
         private string _currentFile = "";
 
+        // ===== EVENTS =====
+        public event Action<BackupJobState>? StateUpdated;
+
+        // ===== CONSTRUCTOR =====
         public ServiceBackupExecution(IBackupStrategy strategy, ILogService logService, IStateService stateService)
         {
             _strategy = strategy;
@@ -29,28 +32,48 @@ namespace EasySave.Services
             _stateService = stateService;
         }
 
+        // ===== PUBLIC METHODS =====
         public void Execute(BackupJob job)
         {
-            // Scan source directory
+            // --- Initialization & Pre-Scan ---
+            var state = new BackupJobState(job.Name);
             var files = Directory.GetFiles(job.SourceDirectory, "*", SearchOption.AllDirectories);
+            long totalSize = files.Sum(f => new FileInfo(f).Length);
+
             _totalFiles = files.Length;
             _completedFiles = 0;
 
-            Console.WriteLine($"  Starting: {job.Name} ({_totalFiles} files)");
+            // --- State Startup & Persistence ---
+            state.StartBackup(_totalFiles, totalSize);
+            _stateService.UpdateJobState(state);
+            StateUpdated?.Invoke(state);
 
-            // INITIALISATION : 
+            Console.WriteLine($"\n  Starting: {job.Name} ({_totalFiles} files)");
             DisplayProgressBar(job.Name);
 
-            // Execute strategy
+            // --- Strategy Execution Loop ---
             _strategy.Execute(job, (source, target, size, timeMs) =>
             {
                 _currentFile = source;
                 _completedFiles++;
 
-                // Affichage systématique
                 DisplayProgressBar(job.Name);
 
+                // --- Real-Time State Update ---
+                if (timeMs < 0)
+                {
+                    state.SetError();
+                }
+                else
+                {
+                    state.UpdateCurrentFile(source, target);
+                    state.CompleteFile(size);
+                }
 
+                _stateService.UpdateJobState(state);
+                StateUpdated?.Invoke(state);
+
+                // --- Activity Logging ---
                 _logService.Write(new ModelLogEntry
                 {
                     Timestamp = DateTime.Now,
@@ -60,19 +83,18 @@ namespace EasySave.Services
                     FileSize = size,
                     TransferTimeMs = timeMs
                 });
-
-
-                var state = new BackupJobState(job.Name);
-                state.UpdateCurrentFile(source, target);
-                _stateService.UpdateJobState(state);
             });
 
-            // Finish
+            // --- Job Finalization ---
+            state.Finish();
+            _stateService.UpdateJobState(state);
+            StateUpdated?.Invoke(state);
+
             DisplayProgressComplete(job.Name);
             _logService.Flush();
         }
-        // ==================== PROGRESS DISPLAY ====================
 
+        // ===== PROGRESS BAR =====
         private void DisplayProgressBar(string jobName)
         {
             double progress = _totalFiles > 0 ? ((double)_completedFiles / _totalFiles) * 100 : 100;
@@ -82,18 +104,16 @@ namespace EasySave.Services
 
             string bar = new string('█', filled) + new string('░', empty);
 
-            // Truncate filename if too long
             string displayFile = _currentFile;
             if (displayFile.Length > 25)
                 displayFile = "..." + displayFile.Substring(displayFile.Length - 22);
 
-            // Overwrite current line with \r
             Console.Write($"\r  [{bar}] {progress,5:F1}% | {_completedFiles}/{_totalFiles} | {displayFile,-28}");
         }
 
         private void DisplayProgressComplete(string jobName)
         {
-            Console.WriteLine(); // New line after progress bar
+            Console.WriteLine();
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine($"  ✓ {jobName} completed!");
             Console.ResetColor();
