@@ -43,6 +43,8 @@ namespace EasySave.Localization
                 ["error_invalid_path"] = new() { [Language.English] = "Error: Invalid path", [Language.French] = "Erreur : Chemin invalide" },
                 ["error_execution"] = new() { [Language.English] = "Error during execution", [Language.French] = "Erreur lors de l'exécution" },
                 ["error_name_exists"] = new() { [Language.English] = "Error: Name already exists", [Language.French] = "Erreur : Ce nom existe déjà" },
+                ["error_generic"] = new() { [Language.English] = "An unexpected error occurred", [Language.French] = "Une erreur inattendue est survenue" },
+                ["not_implemented"] = new() { [Language.English] = "Feature not implemented yet", [Language.French] = "Fonctionnalité non implémentée" },
 
                 // Prompts
                 ["prompt_name"] = new() { [Language.English] = "Job name: ", [Language.French] = "Nom du travail : " },
@@ -64,7 +66,14 @@ namespace EasySave.Localization
 
                 // Types
                 ["type_full"] = new() { [Language.English] = "Full", [Language.French] = "Complète" },
-                ["type_differential"] = new() { [Language.English] = "Differential", [Language.French] = "Différentielle" }
+                ["type_differential"] = new() { [Language.English] = "Differential", [Language.French] = "Différentielle" },
+
+                // Job details (used in ConsoleView)
+                ["job_details_header"] = new() { [Language.English] = "Backup job details", [Language.French] = "Détails du travail de sauvegarde" },
+                ["job_name"] = new() { [Language.English] = "Name: ", [Language.French] = "Nom : " },
+                ["job_source"] = new() { [Language.English] = "Source: ", [Language.French] = "Source : " },
+                ["job_target"] = new() { [Language.English] = "Target: ", [Language.French] = "Cible : " },
+                ["job_type"] = new() { [Language.English] = "Type: ", [Language.French] = "Type : " }
             };
         }
 

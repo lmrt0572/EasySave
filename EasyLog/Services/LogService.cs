@@ -17,6 +17,10 @@ namespace EasyLog.Services
         private StreamWriter? _currentWriter;
         private string? _currentLogFile;
         private readonly object _lockObject = new object();
+        private static readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
+        {
+            WriteIndented = true
+        };
 
         // ===== CONSTRUCTOR =====
         private LogService()
@@ -32,6 +36,8 @@ namespace EasyLog.Services
         // ===== WRITER =====
         public void Write(ModelLogEntry entry)
         {
+            if (entry == null) throw new ArgumentNullException(nameof(entry));
+
             lock (_lockObject)
             {
                 string today = DateTime.Now.ToString("yyyy-MM-dd");
@@ -43,18 +49,13 @@ namespace EasyLog.Services
                     _currentLogFile = todayFile;
                 }
 
-                var options = new JsonSerializerOptions
-                {
-                    WriteIndented = true
-                };
+                // Pretty-printed JSON for readability in text editors
+                string json = JsonSerializer.Serialize(entry, _jsonOptions);
 
-                string json = JsonSerializer.Serialize(entry, options);
-
-                _currentWriter.WriteLine(json);      // écrit le bloc JSON indenté
-                _currentWriter.WriteLine();          // ligne vide entre deux entrées (facultatif)
+                _currentWriter.WriteLine(json);
+                _currentWriter.WriteLine(); // blank line between entries for easier reading
             }
         }
-
 
         // ===== FLUSH =====
         public void Flush()
