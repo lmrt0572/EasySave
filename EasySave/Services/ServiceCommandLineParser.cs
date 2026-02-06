@@ -30,7 +30,7 @@ namespace EasySave.Services
                 return Enumerable.Empty<int>();
             }
 
-            var input = args[0].Trim();
+            var input = string.Concat(args).Trim();
 
             // Check empty input
             if (string.IsNullOrWhiteSpace(input))
