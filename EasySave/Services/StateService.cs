@@ -8,7 +8,7 @@ using EasySave.Models;
 
 namespace EasySave.Services
 {
-
+    // ===== STATE SERVICE =====
     public class StateService : IStateService
     {
         // ===== PRIVATE MEMBERS =====
@@ -20,6 +20,7 @@ namespace EasySave.Services
         };
 
         // ===== CONSTRUCTOR =====
+
         public StateService()
         {
             string appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);

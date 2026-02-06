@@ -10,17 +10,22 @@ using EasySave.Strategies;
 
 namespace EasySave.Services
 {
+    // ===== BACKUP EXECUTION =====
     public class ServiceBackupExecution
     {
+        // ===== PRIVATE MEMBERS =====
         private readonly IBackupStrategy _strategy;
         private readonly ILogService _logService;
         private readonly IStateService _stateService;
 
-        // Progress tracking (internal)
+        // ===== PROGRESS TRACKING =====
         private int _totalFiles;
         private int _completedFiles;
         private string _currentFile = "";
+        // ===== EVENTS =====
+        public event Action<BackupJobState>? StateUpdated;
 
+        // ===== CONSTRUCTOR =====
         public ServiceBackupExecution(IBackupStrategy strategy, ILogService logService, IStateService stateService)
         {
             _strategy = strategy;
@@ -28,6 +33,7 @@ namespace EasySave.Services
             _stateService = stateService;
         }
 
+        // ===== EXECUTION =====
         public void Execute(BackupJob job)
         {
             // Scan source directory
