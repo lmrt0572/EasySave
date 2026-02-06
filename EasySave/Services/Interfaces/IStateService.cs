@@ -1,10 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using EasySave.Models;
 
-namespace EasySave.Services.Interfaces
+namespace EasySave.Services
 {
-    internal interface IStateService
+    // ===== STATE SERVICE INTERFACE =====
+    public interface IStateService
     {
+        void UpdateJobState(BackupJobState state);
     }
 }

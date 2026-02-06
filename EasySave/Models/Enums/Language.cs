@@ -4,7 +4,10 @@ using System.Text;
 
 namespace EasySave.Models.Enums
 {
-    internal class Language
+    // ===== LANGUAGE =====
+    public enum Language
     {
+        English,
+        French
     }
 }

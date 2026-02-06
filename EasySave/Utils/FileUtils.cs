@@ -4,8 +4,10 @@ using System.Text;
 
 namespace EasySave.Utils
 {
+    // ===== FILE UTILS =====
     public static class FileUtils
     {
+        // ===== FILE OPERATIONS =====
         public static void CopyFile(string source, string dest)
         {
             string directory = Path.GetDirectoryName(dest);

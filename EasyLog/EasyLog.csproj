@@ -4,6 +4,12 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <Version>1.0.0</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <Company>ProSoft</Company>
+    <Product>EasyLog</Product>
+    <Description>Logging library for EasySave backup software. Provides daily JSON log file functionality.</Description>
   </PropertyGroup>
 
 </Project>

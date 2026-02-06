@@ -4,7 +4,13 @@ using System.Text;
 
 namespace EasySave.Models.Enums
 {
-    internal class BackupStatus
+    // ===== BACKUP STATUS =====
+    public enum BackupStatus
     {
+        Inactive,
+        Active,
+        Completed,
+        Error
     }
 }
+

@@ -4,7 +4,10 @@ using System.Text;
 
 namespace EasySave.Models.Enums
 {
-    internal class BackupType
+    // ===== BACKUP TYPE =====
+    public enum BackupType
     {
+        Full,
+        Differential
     }
 }

@@ -1,10 +1,26 @@
-﻿using System;
+﻿using EasySave.Models.Enums;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
 namespace EasySave.Models
 {
-    internal class ModelBackupJob
+    // ===== BACKUP JOB =====
+    public class BackupJob
     {
+        // ===== FIELDS =====
+        public string Name { get; set; }
+        public string SourceDirectory { get; set; }
+        public string TargetDirectory { get; set; }
+        public BackupType Type { get; set; }
+
+        // ===== CONSTRUCTOR =====
+        public BackupJob(string name, string source, string target, BackupType type)
+        {
+            Name = name;
+            SourceDirectory = source;
+            TargetDirectory = target;
+            Type = type;
+        }
     }
 }
