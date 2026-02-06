@@ -1,27 +1,28 @@
 ﻿using EasySave.Models;
+using EasySave.Utils;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Text;
+using System.IO;
 
 namespace EasySave.Strategies
 {
+    // ===== DIFFERENTIAL BACKUP STRATEGY =====
     public class DifferentialBackupStrategy : IBackupStrategy
     {
+        // ===== EXECUTION =====
         public void Execute(BackupJob job, Action<string, string, long, long> onFileCompleted)
         {
-            if (!Directory.Exists(job.SourceDirectory))
+            if (!FileUtils.DirectoryExists(job.SourceDirectory))
             {
-                throw new DirectoryNotFoundException(
-                    $"Source directory not found: {job.SourceDirectory}");
+                throw new DirectoryNotFoundException($"Source directory not found: {job.SourceDirectory}");
             }
 
-            var files = Directory.GetFiles(job.SourceDirectory, "*", SearchOption.AllDirectories);
+            var files = FileUtils.GetAllFilesRecursive(job.SourceDirectory);
 
             foreach (var sourceFile in files)
             {
                 var relativePath = Path.GetRelativePath(job.SourceDirectory, sourceFile);
-
                 var targetFile = Path.Combine(job.TargetDirectory, relativePath);
 
                 if (File.Exists(targetFile) && File.GetLastWriteTime(sourceFile) <= File.GetLastWriteTime(targetFile))
@@ -29,21 +30,18 @@ namespace EasySave.Strategies
                     continue;
                 }
 
-                Directory.CreateDirectory(Path.GetDirectoryName(targetFile)!);
-
                 var stopwatch = Stopwatch.StartNew();
 
                 try
                 {
-                    File.Copy(sourceFile, targetFile, true);
+                    FileUtils.CopyFile(sourceFile, targetFile);
                     stopwatch.Stop();
 
-                    var size = new FileInfo(sourceFile).Length;
+                    long size = FileUtils.GetFileSize(sourceFile);
 
                     onFileCompleted(sourceFile, targetFile, size, stopwatch.ElapsedMilliseconds);
                 }
-
-                catch
+                catch (Exception)
                 {
                     stopwatch.Stop();
 
@@ -54,5 +52,4 @@ namespace EasySave.Strategies
             }
         }
     }
-
 }

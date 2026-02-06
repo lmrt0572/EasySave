@@ -1,8 +1,9 @@
-﻿using System;
+using System;
 using EasySave.Models.Enums;
+
 namespace EasySave.Models
 {
-
+    // ===== BACKUP JOB STATE =====
     public class BackupJobState
     {
         // ===== REQUIRED FIELDS =====
@@ -67,7 +68,6 @@ namespace EasySave.Models
             Progression = (int)GetProgression();
             Timestamp = DateTime.Now;
 
-            // Clear current file info after completion
             CurrentSourceFile = null;
             CurrentDestinationFile = null;
         }

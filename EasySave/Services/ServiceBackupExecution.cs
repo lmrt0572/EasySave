@@ -1,4 +1,4 @@
-﻿using EasyLog.Models;
+using EasyLog.Models;
 using EasyLog.Services;
 using EasySave.Models;
 using EasySave.Models.Enums;
