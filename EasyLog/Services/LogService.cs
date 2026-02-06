@@ -7,7 +7,7 @@ namespace EasyLog.Services
 {
     public class LogService : ILogService
     {
-         // ===== SINGLETON =====
+        // ===== SINGLETON =====
         private static readonly Lazy<LogService> _instance = new Lazy<LogService>(() => new LogService());
 
         public static LogService Instance => _instance.Value;
@@ -21,32 +21,40 @@ namespace EasyLog.Services
         // ===== CONSTRUCTOR =====
         private LogService()
         {
-           string appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-           _logDirectory = Path.Combine(appDataPath, "EasySave", "Logs");
-           if (!Directory.Exists(_logDirectory))
-           {
-            Directory.CreateDirectory(_logDirectory);
-           }
+            string appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            _logDirectory = Path.Combine(appDataPath, "EasySave", "Logs");
+            if (!Directory.Exists(_logDirectory))
+            {
+                Directory.CreateDirectory(_logDirectory);
+            }
         }
 
         // ===== WRITER =====
         public void Write(ModelLogEntry entry)
         {
-            
             lock (_lockObject)
+            {
+                string today = DateTime.Now.ToString("yyyy-MM-dd");
+                string todayFile = Path.Combine(_logDirectory, $"{today}.json");
+                if (_currentLogFile != todayFile)
                 {
-                    string today = DateTime.Now.ToString("yyyy-MM-dd");
-                    string todayFile = Path.Combine(_logDirectory, $"{today}.json");
-                    if (_currentLogFile != todayFile)
-                    {
-                        _currentWriter?.Close();
-                        _currentWriter = new StreamWriter(todayFile, append: true);
-                        _currentLogFile = todayFile;
-                    }
-                    string json = JsonSerializer.Serialize(entry);
-                    _currentWriter.WriteLine(json);
+                    _currentWriter?.Close();
+                    _currentWriter = new StreamWriter(todayFile, append: true);
+                    _currentLogFile = todayFile;
                 }
+
+                var options = new JsonSerializerOptions
+                {
+                    WriteIndented = true
+                };
+
+                string json = JsonSerializer.Serialize(entry, options);
+
+                _currentWriter.WriteLine(json);      // écrit le bloc JSON indenté
+                _currentWriter.WriteLine();          // ligne vide entre deux entrées (facultatif)
+            }
         }
+
 
         // ===== FLUSH =====
         public void Flush()
@@ -58,4 +66,3 @@ namespace EasyLog.Services
         }
     }
 }
-

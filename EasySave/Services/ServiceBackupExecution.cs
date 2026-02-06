@@ -1,14 +1,13 @@
-﻿using EasyLog.Services;
-using EasyLog.Models;
+﻿using EasyLog.Models;
+using EasyLog.Services;
 using EasySave.Models;
 using EasySave.Models.Enums;
-using EasySave.Services.Interfaces;
 using EasySave.Strategies;
 using System;
-using System.Collections.Generic;
+using System.Diagnostics;
+using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Text;
 
 namespace EasySave.Services
 {
@@ -18,7 +17,10 @@ namespace EasySave.Services
         private readonly ILogService _logService;
         private readonly IStateService _stateService;
 
-        public event Action<BackupJobState>? StateUpdated;
+        // Progress tracking (internal)
+        private int _totalFiles;
+        private int _completedFiles;
+        private string _currentFile = "";
 
         public ServiceBackupExecution(IBackupStrategy strategy, ILogService logService, IStateService stateService)
         {
@@ -29,27 +31,25 @@ namespace EasySave.Services
 
         public void Execute(BackupJob job)
         {
-            var state = new BackupJobState(job.Name);
-
+            // Scan source directory
             var files = Directory.GetFiles(job.SourceDirectory, "*", SearchOption.AllDirectories);
-            long totalSize = files.Sum(f => new FileInfo(f).Length);
+            _totalFiles = files.Length;
+            _completedFiles = 0;
 
-            state.StartBackup(files.Length, totalSize);
+            Console.WriteLine($"  Starting: {job.Name} ({_totalFiles} files)");
 
-            StateUpdated?.Invoke(state);
-            _stateService.UpdateJobState(state);
+            // INITIALISATION : 
+            DisplayProgressBar(job.Name);
 
+            // Execute strategy
             _strategy.Execute(job, (source, target, size, timeMs) =>
             {
-                if (timeMs < 0)
-                {
-                    state.SetError();
-                }
-                else
-                {
-                    state.UpdateCurrentFile(source, target);
-                    state.CompleteFile(size);
-                }
+                _currentFile = source;
+                _completedFiles++;
+
+                // Affichage systématique
+                DisplayProgressBar(job.Name);
+
 
                 _logService.Write(new ModelLogEntry
                 {
@@ -61,19 +61,42 @@ namespace EasySave.Services
                     TransferTimeMs = timeMs
                 });
 
-                StateUpdated?.Invoke(state);
+
+                var state = new BackupJobState(job.Name);
+                state.UpdateCurrentFile(source, target);
                 _stateService.UpdateJobState(state);
             });
 
-            if (state.Status != BackupStatus.Error)
-            {
-                state.Finish();
-            }
-
+            // Finish
+            DisplayProgressComplete(job.Name);
             _logService.Flush();
+        }
+        // ==================== PROGRESS DISPLAY ====================
 
-            StateUpdated?.Invoke(state);
-            _stateService.UpdateJobState(state);
+        private void DisplayProgressBar(string jobName)
+        {
+            double progress = _totalFiles > 0 ? ((double)_completedFiles / _totalFiles) * 100 : 100;
+            int barWidth = 30;
+            int filled = (int)(progress / 100 * barWidth);
+            int empty = barWidth - filled;
+
+            string bar = new string('█', filled) + new string('░', empty);
+
+            // Truncate filename if too long
+            string displayFile = _currentFile;
+            if (displayFile.Length > 25)
+                displayFile = "..." + displayFile.Substring(displayFile.Length - 22);
+
+            // Overwrite current line with \r
+            Console.Write($"\r  [{bar}] {progress,5:F1}% | {_completedFiles}/{_totalFiles} | {displayFile,-28}");
+        }
+
+        private void DisplayProgressComplete(string jobName)
+        {
+            Console.WriteLine(); // New line after progress bar
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine($"  ✓ {jobName} completed!");
+            Console.ResetColor();
         }
     }
 }
