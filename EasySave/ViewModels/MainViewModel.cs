@@ -167,7 +167,65 @@ namespace EasySave.ViewModels
                 return;
 
             var indices = _parser.Parse(args);
-            ExecuteSelectedJobs(indices);
+
+            // Check for parsing errors
+            if (_parser.HasError)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"  Error: {_parser.ErrorMessage}");
+                Console.ResetColor();
+
+                if (!indices.Any())
+                    return;
+            }
+
+            // Check if any jobs exist
+            if (_jobs.Count == 0)
+            {
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine("  No backup jobs configured.");
+                Console.ResetColor();
+                return;
+            }
+
+            // Filter to only existing jobs and warn about missing ones
+            var validIndices = new List<int>();
+            var invalidIndices = new List<int>();
+
+            foreach (int index in indices)
+            {
+                if (index >= 0 && index < _jobs.Count)
+                {
+                    validIndices.Add(index);
+                }
+                else
+                {
+                    invalidIndices.Add(index + 1); // Convert back to 1-based for display
+                }
+            }
+
+            // Warn about non-existent jobs
+            if (invalidIndices.Count > 0)
+            {
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine($"  Warning: Job(s) {string.Join(", ", invalidIndices)} do not exist. (You have {_jobs.Count} job(s))");
+                Console.ResetColor();
+            }
+
+            // Check if any valid jobs remain
+            if (validIndices.Count == 0)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("  No valid jobs to execute.");
+                Console.ResetColor();
+                return;
+            }
+
+            // Execute only valid jobs
+            Console.WriteLine($"  Executing job(s): {string.Join(", ", validIndices.Select(i => i + 1))}");
+            Console.WriteLine();
+
+            ExecuteSelectedJobs(validIndices);
         }
 
         //  PERSISTENCE 
