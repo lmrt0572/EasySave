@@ -13,12 +13,10 @@ namespace EasySave.Services
 {
     public class ServiceBackupExecution
     {
-        // ===== PRIVATE MEMBERS =====
+        // ===== PRIVATE FIELDS =====
         private readonly IBackupStrategy _strategy;
         private readonly ILogService _logService;
         private readonly IStateService _stateService;
-
-        // ===== PROGRESS TRACKING =====
         private int _totalFiles;
         private int _completedFiles;
         private string _currentFile = "";
@@ -34,9 +32,10 @@ namespace EasySave.Services
             _stateService = stateService;
         }
 
-        // ===== EXECUTION =====
+        // ===== PUBLIC METHODS =====
         public void Execute(BackupJob job)
         {
+            // --- Initialization & Pre-Scan ---
             var state = new BackupJobState(job.Name);
             var files = Directory.GetFiles(job.SourceDirectory, "*", SearchOption.AllDirectories);
             long totalSize = files.Sum(f => new FileInfo(f).Length);
@@ -44,6 +43,7 @@ namespace EasySave.Services
             _totalFiles = files.Length;
             _completedFiles = 0;
 
+            // --- State Startup ---
             state.StartBackup(_totalFiles, totalSize);
             _stateService.UpdateJobState(state);
             StateUpdated?.Invoke(state);
@@ -51,6 +51,7 @@ namespace EasySave.Services
             Console.WriteLine($"\n  Starting: {job.Name} ({_totalFiles} files)");
             DisplayProgressBar(job.Name);
 
+            // --- Strategy Execution ---
             _strategy.Execute(job, (source, target, size, timeMs) =>
             {
                 _currentFile = source;
@@ -58,6 +59,7 @@ namespace EasySave.Services
 
                 DisplayProgressBar(job.Name);
 
+                // --- Real-Time State Update ---
                 if (timeMs < 0)
                 {
                     state.SetError();
@@ -67,9 +69,11 @@ namespace EasySave.Services
                     state.UpdateCurrentFile(source, target);
                     state.CompleteFile(size);
                 }
+
                 _stateService.UpdateJobState(state);
                 StateUpdated?.Invoke(state);
 
+                // --- Activity Logging ---
                 _logService.Write(new ModelLogEntry
                 {
                     Timestamp = DateTime.Now,
@@ -81,6 +85,7 @@ namespace EasySave.Services
                 });
             });
 
+            // --- Finalization ---
             state.Finish();
             _stateService.UpdateJobState(state);
             StateUpdated?.Invoke(state);
@@ -89,8 +94,7 @@ namespace EasySave.Services
             _logService.Flush();
         }
 
-        // ==================== PROGRESS DISPLAY ====================
-
+        // ===== PRIVATE UI HELPERS =====
         private void DisplayProgressBar(string jobName)
         {
             double progress = _totalFiles > 0 ? ((double)_completedFiles / _totalFiles) * 100 : 100;
@@ -109,7 +113,7 @@ namespace EasySave.Services
 
         private void DisplayProgressComplete(string jobName)
         {
-            Console.WriteLine(); 
+            Console.WriteLine();
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine($"  ✓ {jobName} completed!");
             Console.ResetColor();
