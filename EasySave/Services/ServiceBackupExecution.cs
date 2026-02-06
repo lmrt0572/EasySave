@@ -1,31 +1,27 @@
-﻿using System;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
 using EasyLog.Models;
 using EasyLog.Services;
 using EasySave.Models;
 using EasySave.Models.Enums;
 using EasySave.Strategies;
+using System;
+using System.Diagnostics;
+using System.Drawing;
+using System.IO;
+using System.Linq;
 
 namespace EasySave.Services
 {
-    // ===== BACKUP EXECUTION =====
     public class ServiceBackupExecution
     {
-        // ===== PRIVATE MEMBERS =====
         private readonly IBackupStrategy _strategy;
         private readonly ILogService _logService;
         private readonly IStateService _stateService;
 
-        // ===== PROGRESS TRACKING =====
+        // Progress tracking (internal)
         private int _totalFiles;
         private int _completedFiles;
         private string _currentFile = "";
-        // ===== EVENTS =====
-        public event Action<BackupJobState>? StateUpdated;
 
-        // ===== CONSTRUCTOR =====
         public ServiceBackupExecution(IBackupStrategy strategy, ILogService logService, IStateService stateService)
         {
             _strategy = strategy;
@@ -33,7 +29,6 @@ namespace EasySave.Services
             _stateService = stateService;
         }
 
-        // ===== EXECUTION =====
         public void Execute(BackupJob job)
         {
             // Scan source directory
@@ -43,7 +38,7 @@ namespace EasySave.Services
 
             Console.WriteLine($"  Starting: {job.Name} ({_totalFiles} files)");
 
-            // INITIALISATION : Afficher une barre vide immédiatement
+            // INITIALISATION : 
             DisplayProgressBar(job.Name);
 
             // Execute strategy
@@ -55,10 +50,18 @@ namespace EasySave.Services
                 // Affichage systématique
                 DisplayProgressBar(job.Name);
 
-                // Logique de log et d'état (ne pas oublier de mettre à jour l'état ici pour le JSON)
-                _logService.Write(new ModelLogEntry { /* ... vos données ... */ });
 
-                // IMPORTANT : Si vous utilisez IStateService, appelez-le ici pour que state.json soit juste
+                _logService.Write(new ModelLogEntry
+                {
+                    Timestamp = DateTime.Now,
+                    JobName = job.Name,
+                    SourcePath = source,
+                    TargetPath = target,
+                    FileSize = size,
+                    TransferTimeMs = timeMs
+                });
+
+
                 var state = new BackupJobState(job.Name);
                 state.UpdateCurrentFile(source, target);
                 _stateService.UpdateJobState(state);
