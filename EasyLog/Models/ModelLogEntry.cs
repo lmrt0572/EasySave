@@ -4,8 +4,10 @@ using System.Text;
 
 namespace EasyLog.Models
 {
-public class ModelLogEntry
+    // ===== LOG ENTRY =====
+    public class ModelLogEntry
     {
+        // ===== FIELDS =====
         public DateTime Timestamp { get; set; }
 
         public string JobName { get; set; } = string.Empty;

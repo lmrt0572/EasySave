@@ -1,18 +1,21 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
 namespace EasySave.Services
 {
+    // ===== COMMAND LINE PARSER =====
     public class ServiceCommandLineParser
     {
+        // ===== CONSTANTS =====
         private const int MinIndex = 1;
         private const int MaxIndex = 5;
 
-        // Error tracking
+        // ===== ERROR TRACKING =====
         public bool HasError { get; private set; }
         public string ErrorMessage { get; private set; } = string.Empty;
 
+        // ===== PARSING =====
         public IEnumerable<int> Parse(string[] args)
         {
             // Reset error state
@@ -68,6 +71,7 @@ namespace EasySave.Services
             if (indices.Count == 0 && !HasError)
             {
                 HasError = true;
+
                 ErrorMessage = $"No valid job indices found. Valid range: {MinIndex}-{MaxIndex}";
             }
 
@@ -192,8 +196,7 @@ namespace EasySave.Services
             return indices;
         }
 
-
-
+        // ===== VALIDATION =====
         private bool IsValidIndex(int index) => index >= MinIndex && index <= MaxIndex;
     }
 }

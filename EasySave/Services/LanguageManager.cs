@@ -1,18 +1,23 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
 namespace EasySave.Localization
 {
+    // ===== ENUM =====
     public enum Language { English, French }
 
+    // ===== LANGUAGE MANAGER =====
     public class LanguageManager
     {
+        // ===== PRIVATE MEMBERS =====
         private Language _currentLanguage = Language.English;
         private readonly Dictionary<string, Dictionary<Language, string>> _translations;
 
+        // ===== CONSTRUCTOR =====
         public LanguageManager()
         {
+            // ===== TRANSLATIONS DATA =====
             _translations = new Dictionary<string, Dictionary<Language, string>>
             {
                 // Menu principal
@@ -63,10 +68,12 @@ namespace EasySave.Localization
             };
         }
 
+        // ===== LANGUAGE API =====
         public void SetLanguage(Language lang) => _currentLanguage = lang;
 
         public Language GetCurrentLanguage() => _currentLanguage;
 
+        // ===== TRANSLATION =====
         public string GetText(string key)
         {
             if (_translations.TryGetValue(key, out var langDict))

@@ -7,8 +7,10 @@ using System.IO;
 
 namespace EasySave.Strategies
 {
+    // ===== FULL BACKUP STRATEGY =====
     public class FullBackupStrategy : IBackupStrategy
     {
+        // ===== EXECUTION =====
         public void Execute(BackupJob job, Action<string, string, long, long> onFileCompleted)
         {
             if (!FileUtils.DirectoryExists(job.SourceDirectory))
