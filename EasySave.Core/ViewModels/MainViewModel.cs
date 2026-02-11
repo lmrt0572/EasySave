@@ -1,13 +1,15 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text.Json;
 using EasySave.Core.Models;
 using EasySave.Core.Models.Enums; 
 using EasySave.Core.Services;
 using EasySave.Core.Strategies;
 using EasySave.Core.Utils;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text.Json;
+using System.Threading.Tasks;
+using System.Xml.Linq;
 
 namespace EasySave.Core.ViewModels
 {
@@ -22,6 +24,7 @@ namespace EasySave.Core.ViewModels
         private readonly LanguageManager _languageManager;
         private readonly ServiceCommandLineParser _parser;
         private readonly IStateService _stateService;
+        private readonly IEncryptionService _encryptionService;
 
         // ===== CONSTRUCTOR =====
         public MainViewModel(LanguageManager languageManager)
@@ -30,6 +33,11 @@ namespace EasySave.Core.ViewModels
             _parser = new ServiceCommandLineParser();
             _stateService = new StateService();
             _jobs = new List<BackupJob>();
+            _encryptionService = new EncryptionService(
+                exePath: Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "CryptoSoft.exe"),
+                key: "ProSoftKey123",
+                extensions: new List<string> { ".txt", ".pdf", ".md" }
+            );
 
             // Setup config path
             string appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
@@ -112,7 +120,7 @@ namespace EasySave.Core.ViewModels
 
         // ===== EXECUTION ===== 
 
-        public void ExecuteJob(int index)
+        public async Task ExecuteJob(int index)
         {
             // Convert 1-based to 0-based index
             int zeroBasedIndex = index - 1;
@@ -121,29 +129,29 @@ namespace EasySave.Core.ViewModels
             if (job == null)
                 return;
 
-            ExecuteSingleJob(job);
+            await ExecuteSingleJob(job);
         }
 
-        public void ExecuteAllJobs()
+        public async Task ExecuteAllJobs()
         {
             foreach (var job in _jobs)
             {
-                ExecuteSingleJob(job);
+                await ExecuteSingleJob(job);
             }
         }
 
-        public void ExecuteSelectedJobs(IEnumerable<int> indices)
+        public async Task ExecuteSelectedJobs(IEnumerable<int> indices)
         {
             foreach (int index in indices)
             {
                 if (index >= 0 && index < _jobs.Count)
                 {
-                    ExecuteSingleJob(_jobs[index]);
+                    await ExecuteSingleJob(_jobs[index]);
                 }
             }
         }
 
-        private void ExecuteSingleJob(BackupJob job)
+        private async Task ExecuteSingleJob(BackupJob job)
         {
             // Select strategy based on job type
             IBackupStrategy strategy = job.Type == BackupType.Full
@@ -152,10 +160,10 @@ namespace EasySave.Core.ViewModels
 
             // Create execution service
             var logService = EasyLog.Services.LogService.Instance;
-            var execution = new ServiceBackupExecution(strategy, logService, _stateService);
+            var execution = new ServiceBackupExecution(strategy, logService, _stateService, _encryptionService);
 
             // Execute
-            execution.Execute(job);
+            await execution.Execute(job);
         }
 
         // ===== CLI MODE ===== 

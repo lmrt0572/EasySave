@@ -8,6 +8,6 @@ namespace EasySave.Core.Strategies
     // ===== BACKUP STRATEGY INTERFACE =====
     public interface IBackupStrategy
     {
-        void Execute(BackupJob job, Action<string, string, long, long> onFileCompleted);
+        Task Execute(BackupJob job, IEncryptionService encryptionService, Action<string, string, long, long, int> onFileCompleted);
     }
 }

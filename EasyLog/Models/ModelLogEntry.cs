@@ -20,5 +20,7 @@ namespace EasyLog.Models
         public long FileSize { get; set; }
 
         public long TransferTimeMs { get; set; }
+
+        public int EncryptionTimeMs { get; set; }
     }
 }
