@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using EasyLog.Models;
 using EasySave.Core.Models;
 using EasySave.Core.Models.Enums; 
 using EasySave.Core.Services;
@@ -22,6 +23,7 @@ namespace EasySave.Core.ViewModels
         private readonly LanguageManager _languageManager;
         private readonly ServiceCommandLineParser _parser;
         private readonly IStateService _stateService;
+        private LogFormat _currentLogFormat = LogFormat.Json;
 
         // ===== CONSTRUCTOR =====
         public MainViewModel(LanguageManager languageManager)
@@ -158,6 +160,7 @@ namespace EasySave.Core.ViewModels
             execution.Execute(job);
         }
 
+            
         // ===== CLI MODE ===== 
 
         public void RunCli(string[] args)
@@ -277,6 +280,21 @@ namespace EasySave.Core.ViewModels
             public string? SourceDirectory { get; set; }
             public string? TargetDirectory { get; set; }
             public BackupType Type { get; set; }
+        }
+
+        // ===== LOG MANAGEMENT ===== 
+        public void SetLogFormat(LogFormat format)
+        {
+            _currentLogFormat = format;
+            EasyLog.Services.LogService.Instance.SetLogFormat(format);
+            SaveLogFormatPreference(format);
+        }
+
+        public LogFormat GetCurrentLogFormat() => _currentLogFormat;
+
+        private void SaveLogFormatPreference(LogFormat format)
+        {
+            // à compléter 
         }
     }
 }

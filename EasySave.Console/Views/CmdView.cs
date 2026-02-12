@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using EasyLog.Models;
 using EasySave.Core.Models;
 using EasySave.Core.Models.Enums;
 using EasySave.Core.ViewModels;
@@ -10,7 +12,7 @@ namespace EasySave.Cmd.Views
     public class CmdView
     {
         // ===== CONSTANTS =====
-        private const int MenuOptionCount = 6;
+        private const int MenuOptionCount = 7;
         private const int BoxWidth = 50;
 
         // ===== PRIVATE MEMBERS =====
@@ -56,8 +58,8 @@ namespace EasySave.Cmd.Views
                     continue;
                 }
 
-                // ----- Number keys 1-6: direct selection
-                if (key.KeyChar >= '1' && key.KeyChar <= '6')
+                // ----- Number keys 1-7: direct selection
+                if (key.KeyChar >= '1' && key.KeyChar <= '7')
                 {
                     int index = key.KeyChar - '1';
                     if (ExecuteMenuAction(index))
@@ -78,12 +80,9 @@ namespace EasySave.Cmd.Views
                     case 2: RunExecuteJob(); break;
                     case 3: RunDeleteJob(); break;
                     case 4: RunChangeLanguage(); break;
-                    case 5: return true; // Quit
+                    case 5: RunChangeLogFormat();break;
+                    case 6: return true; // Quit
                 }
-            }
-            catch (NotImplementedException)
-            {
-                DisplayMessage("not_implemented");
             }
             catch (Exception ex)
             {
@@ -118,6 +117,7 @@ namespace EasySave.Cmd.Views
                 "menu_execute",
                 "menu_delete",
                 "menu_language",
+                "menu_log_format",
                 "menu_quit"
             };
 
@@ -302,13 +302,39 @@ namespace EasySave.Cmd.Views
             DisplaySuccess("language_changed");
         }
 
+        private void RunChangeLogFormat()
+        {
+            var logService = EasyLog.Services.LogService.Instance;
+
+            DisplayMessage("Current format: " +
+                (_viewModel.GetCurrentLogFormat() == LogFormat.Json ? "JSON" : "XML"),
+                useTranslation: false);
+
+            string choice = PromptUser("Choose format (1=JSON, 2=XML): ");
+
+            if (choice == "1")
+            {
+                _viewModel.SetLogFormat(LogFormat.Json);
+                DisplaySuccess("Log format changed to JSON");
+            }
+            else if (choice == "2")
+            {
+                _viewModel.SetLogFormat(LogFormat.Xml);
+                DisplaySuccess("Log format changed to XML");
+            }
+            else
+            {
+                DisplayError("error_invalid_choice");
+            }
+        }
+
         // ===== DISPLAY HELPERS =====
 
         private void DisplayMessage(string textKey, bool useTranslation = true)
-        {
-            string message = useTranslation ? _lang.GetText(textKey) : textKey;
-            Console.WriteLine("  " + message);
-        }
+                {
+                    string message = useTranslation ? _lang.GetText(textKey) : textKey;
+                    Console.WriteLine("  " + message);
+                }
 
         private void DisplayLabelValue(string labelKey, string value)
         {

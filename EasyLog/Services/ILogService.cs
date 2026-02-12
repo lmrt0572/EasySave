@@ -8,5 +8,6 @@ namespace EasyLog.Services
         void Write(ModelLogEntry entry);
 
         void Flush();
+        void SetLogFormat(LogFormat format);
     }
 }
