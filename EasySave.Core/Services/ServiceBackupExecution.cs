@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using EasyLog.Models;
 using EasyLog.Services;
@@ -37,15 +38,16 @@ namespace EasySave.Core.Services
         }
 
         // ===== PUBLIC METHODS =====
-        public async Task Execute(BackupJob job, string businessSoftwareName)
+
+        /// <summary>Execute backup (V1.0 compatible - no cancellation)</summary>
+        public async Task Execute(BackupJob job)
         {
-            if (FileUtils.IsProcessRunning(businessSoftwareName))
-            {
-                Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine($"\n  [STOP] Business software detected: {businessSoftwareName}. Backup canceled.");
-                Console.ResetColor();
-                return;
-            }
+            Execute(job, CancellationToken.None);
+        }
+
+        /// <summary>Execute backup with cancellation support (V2.0 - stops after current file)</summary>
+        public void Execute(BackupJob job, CancellationToken cancellationToken)
+        {
             // --- Initialization & Pre-Scan ---
             var state = new BackupJobState(job.Name);
             var files = Directory.GetFiles(job.SourceDirectory, "*", SearchOption.AllDirectories);
@@ -61,6 +63,8 @@ namespace EasySave.Core.Services
 
             Console.WriteLine($"\n  Starting: {job.Name} ({_totalFiles} files)");
             DisplayProgressBar(job.Name);
+
+            bool wasCancelled = false;
 
             // --- Strategy Execution Loop ---
             try
@@ -109,22 +113,47 @@ namespace EasySave.Core.Services
                 _stateService.UpdateJobState(state);
                 StateUpdated?.Invoke(state);
 
+                // --- Activity Logging ---
+                _logService.Write(new ModelLogEntry
+                {
+                    Timestamp = DateTime.Now,
+                    JobName = job.Name,
+                    SourcePath = source,
+                    TargetPath = target,
+                    FileSize = size,
+                    TransferTimeMs = timeMs
+                });
+
+                // V2.0 - Check cancellation AFTER current file is finished (#14)
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    wasCancelled = true;
+                    throw new OperationCanceledException("Backup stopped: business software detected.");
+                }
+            });
+
+            // --- Job Finalization ---
+            if (wasCancelled)
+            {
+                state.Status = BackupStatus.Stopped;
+                state.Timestamp = DateTime.Now;
+                _stateService.UpdateJobState(state);
+                StateUpdated?.Invoke(state);
+
+                Console.WriteLine();
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine($"  ⚠ {job.Name} stopped (business software detected)");
+                Console.ResetColor();
+            }
+            else
+            {
+                state.Finish();
+                _stateService.UpdateJobState(state);
+                StateUpdated?.Invoke(state);
                 DisplayProgressComplete(job.Name);
             }
-            catch (OperationCanceledException ex)
-            {
-                // Handling the safety stop
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"\n  {ex.Message}");
-                Console.ResetColor();
 
-                state.SetError();
-                _stateService.UpdateJobState(state);
-            }
-            finally
-            {
-                _logService.Flush();
-            }
+            _logService.Flush();
         }
 
         // ===== PROGRESS BAR =====
