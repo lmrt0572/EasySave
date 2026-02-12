@@ -59,34 +59,47 @@ namespace EasyLog.Services
 
         private void MigrateLogsToNewFormat(LogFormat newFormat)
         {
-            string today = DateTime.Now.ToString("yyyy-MM-dd");
-            string oldExtension = newFormat == LogFormat.Json ? ".xml" : ".json";
-            string newExtension = _currentStrategy.GetFileExtension();
-            string oldFile = Path.Combine(_logDirectory, $"{today}{oldExtension}");
-            string newFile = Path.Combine(_logDirectory, $"{today}{newExtension}");
+            string sourceExtension = newFormat == LogFormat.Json ? ".xml" : ".json";
+            string targetExtension = newFormat == LogFormat.Json ? ".json" : ".xml";
 
-            if (!File.Exists(oldFile))
-                return;
-
-            // Reading old entries
-            var entries = ReadEntriesFromFile(oldFile, oldExtension);
-
-            // Writing in new format
+            string[] sourceFiles;
             try
             {
-                using (var writer = new StreamWriter(newFile, append: false))
-                {
-                    foreach (var entry in entries)
-                    {
-                        _currentStrategy.WriteEntry(writer, entry);
-                    }
-                }
-
-                File.Delete(oldFile);
+                sourceFiles = Directory.GetFiles(_logDirectory, "*" + sourceExtension);
             }
             catch
             {
-                // Ignore migration errors to avoid breaking the main application
+                return;
+            }
+
+            foreach (var oldFile in sourceFiles)
+            {
+                string newFile = Path.ChangeExtension(oldFile, targetExtension.TrimStart('.'));
+
+                // Reading old entries
+                var entries = ReadEntriesFromFile(oldFile, sourceExtension);
+
+                // If nothing could be read, skip this file
+                if (entries.Count == 0)
+                    continue;
+
+                // Writing in new format
+                try
+                {
+                    using (var writer = new StreamWriter(newFile, append: false))
+                    {
+                        foreach (var entry in entries)
+                        {
+                            _currentStrategy.WriteEntry(writer, entry);
+                        }
+                    }
+
+                    File.Delete(oldFile);
+                }
+                catch
+                {
+                    // Ignore migration errors on a per-file basis
+                }
             }
         }
 
