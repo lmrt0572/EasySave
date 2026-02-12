@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using EasyLog.Models;
 using EasyLog.Services;
 using EasySave.Core.Models;
@@ -33,7 +34,15 @@ namespace EasySave.Core.Services
         }
 
         // ===== PUBLIC METHODS =====
+
+        /// <summary>Execute backup (V1.0 compatible - no cancellation)</summary>
         public void Execute(BackupJob job)
+        {
+            Execute(job, CancellationToken.None);
+        }
+
+        /// <summary>Execute backup with cancellation support (V2.0 - stops after current file)</summary>
+        public void Execute(BackupJob job, CancellationToken cancellationToken)
         {
             // --- Initialization & Pre-Scan ---
             var state = new BackupJobState(job.Name);
@@ -50,6 +59,8 @@ namespace EasySave.Core.Services
 
             Console.WriteLine($"\n  Starting: {job.Name} ({_totalFiles} files)");
             DisplayProgressBar(job.Name);
+
+            bool wasCancelled = false;
 
             // --- Strategy Execution Loop ---
             _strategy.Execute(job, (source, target, size, timeMs) =>
@@ -83,14 +94,36 @@ namespace EasySave.Core.Services
                     FileSize = size,
                     TransferTimeMs = timeMs
                 });
+
+                // V2.0 - Check cancellation AFTER current file is finished (#14)
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    wasCancelled = true;
+                    throw new OperationCanceledException("Backup stopped: business software detected.");
+                }
             });
 
             // --- Job Finalization ---
-            state.Finish();
-            _stateService.UpdateJobState(state);
-            StateUpdated?.Invoke(state);
+            if (wasCancelled)
+            {
+                state.Status = BackupStatus.Stopped;
+                state.Timestamp = DateTime.Now;
+                _stateService.UpdateJobState(state);
+                StateUpdated?.Invoke(state);
 
-            DisplayProgressComplete(job.Name);
+                Console.WriteLine();
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine($"  ⚠ {job.Name} stopped (business software detected)");
+                Console.ResetColor();
+            }
+            else
+            {
+                state.Finish();
+                _stateService.UpdateJobState(state);
+                StateUpdated?.Invoke(state);
+                DisplayProgressComplete(job.Name);
+            }
+
             _logService.Flush();
         }
 
