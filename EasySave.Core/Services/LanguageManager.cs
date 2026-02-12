@@ -25,7 +25,8 @@ namespace EasySave.Core.Models.Enums
                 ["menu_execute"] = new() { [Language.English] = "3. Execute backup job", [Language.French] = "3. Exécuter une sauvegarde" },
                 ["menu_delete"] = new() { [Language.English] = "4. Delete backup job", [Language.French] = "4. Supprimer un travail" },
                 ["menu_language"] = new() { [Language.English] = "5. Change language", [Language.French] = "5. Changer la langue" },
-                ["menu_quit"] = new() { [Language.English] = "6. Quit", [Language.French] = "6. Quitter" },
+                ["menu_log_format"] = new() { [Language.English] = "6. Change log format", [Language.French] = "6. Changer le format des logs" },
+                ["menu_quit"] = new() { [Language.English] = "7. Quit", [Language.French] = "7. Quitter" },
                 ["menu_choice"] = new() { [Language.English] = "Your choice: ", [Language.French] = "Votre choix : " },
 
                 // Messages confirmation
@@ -50,6 +51,7 @@ namespace EasySave.Core.Models.Enums
                 ["prompt_target"] = new() { [Language.English] = "Target directory: ", [Language.French] = "Répertoire cible : " },
                 ["prompt_type"] = new() { [Language.English] = "Type (1=Full, 2=Differential): ", [Language.French] = "Type (1=Complète, 2=Différentielle) : " },
                 ["prompt_job_index"] = new() { [Language.English] = "Job number: ", [Language.French] = "Numéro du travail : " },
+                ["prompt_log_format"] = new() { [Language.English] = "Choose format (1=JSON, 2=XML): ", [Language.French] = "Choisir le format (1=JSON, 2=XML) : " },
 
                 // Status
                 ["status_active"] = new() { [Language.English] = "Active", [Language.French] = "Actif" },
@@ -71,7 +73,10 @@ namespace EasySave.Core.Models.Enums
                 ["job_name"] = new() { [Language.English] = "Name: ", [Language.French] = "Nom : " },
                 ["job_source"] = new() { [Language.English] = "Source: ", [Language.French] = "Source : " },
                 ["job_target"] = new() { [Language.English] = "Target: ", [Language.French] = "Cible : " },
-                ["job_type"] = new() { [Language.English] = "Type: ", [Language.French] = "Type : " }
+                ["job_type"] = new() { [Language.English] = "Type: ", [Language.French] = "Type : " },
+
+                // Log format
+                ["log_format_changed"] = new() { [Language.English] = "Log format changed to {0}", [Language.French] = "Format de log changé en {0}" }
             };
         }
 
