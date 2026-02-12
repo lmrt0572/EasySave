@@ -142,26 +142,45 @@ namespace EasyLog.Services
                 {
                     using (var reader = new StreamReader(filePath))
                     {
+                        try
+                        {
+                            var rootSerializer = new System.Xml.Serialization.XmlSerializer(typeof(LogEntries));
+                            var root = (LogEntries?)rootSerializer.Deserialize(reader);
+                            if (root != null && root.Entries != null)
+                            {
+                                entries.AddRange(root.Entries);
+                                return entries;
+                            }
+                        }
+                        catch
+                        {
+                            reader.BaseStream.Position = 0;
+                            reader.DiscardBufferedData();
+                        }
+
                         var serializer = new System.Xml.Serialization.XmlSerializer(typeof(ModelLogEntry));
                         string content = reader.ReadToEnd();
 
-                        var xmlDocs = content.Split(new[] { "<?xml" }, StringSplitOptions.RemoveEmptyEntries);
-
-                        foreach (var xmlDoc in xmlDocs)
+                        if (content.Contains("<?xml"))
                         {
-                            try
+                            var xmlDocs = content.Split(new[] { "<?xml" }, StringSplitOptions.RemoveEmptyEntries);
+
+                            foreach (var xmlDoc in xmlDocs)
                             {
-                                string fullXml = "<?xml" + xmlDoc.Trim();
-                                using (var stringReader = new StringReader(fullXml))
+                                try
                                 {
-                                    var entry = (ModelLogEntry?)serializer.Deserialize(stringReader);
-                                    if (entry != null)
-                                        entries.Add(entry);
+                                    string fullXml = "<?xml" + xmlDoc.Trim();
+                                    using (var stringReader = new StringReader(fullXml))
+                                    {
+                                        var entry = (ModelLogEntry?)serializer.Deserialize(stringReader);
+                                        if (entry != null)
+                                            entries.Add(entry);
+                                    }
                                 }
-                            }
-                            catch
-                            {
-                                // Ignore malformed XML entries
+                                catch
+                                {
+                                    // Ignore malformed XML entries
+                                }
                             }
                         }
                     }
@@ -187,6 +206,19 @@ namespace EasyLog.Services
                 string extension = _currentStrategy.GetFileExtension();
                 string todayFile = Path.Combine(_logDirectory, $"{today}{extension}");
 
+                if (extension == ".xml")
+                {
+                    try
+                    {
+                        WriteXmlEntry(todayFile, entry);
+                    }
+                    catch
+                    {
+                        // Ignore XML logging errors
+                    }
+                    return;
+                }
+
                 if (_currentLogFile != todayFile)
                 {
                     try
@@ -211,6 +243,46 @@ namespace EasyLog.Services
                 {
                     // Ignore logging errors
                 }
+            }
+        }
+
+        // ===== XML HELPER =====
+        private void WriteXmlEntry(string filePath, ModelLogEntry entry)
+        {
+            LogEntries root;
+
+            if (File.Exists(filePath))
+            {
+                try
+                {
+                    using (var reader = new StreamReader(filePath))
+                    {
+                        var serializer = new System.Xml.Serialization.XmlSerializer(typeof(LogEntries));
+                        root = (LogEntries?)serializer.Deserialize(reader) ?? new LogEntries();
+                    }
+                }
+                catch
+                {
+                    root = new LogEntries();
+                }
+            }
+            else
+            {
+                root = new LogEntries();
+            }
+
+            root.Entries.Add(entry);
+
+            var settings = new System.Xml.XmlWriterSettings
+            {
+                Indent = true,
+                OmitXmlDeclaration = false
+            };
+
+            using (var writer = System.Xml.XmlWriter.Create(filePath, settings))
+            {
+                var serializer = new System.Xml.Serialization.XmlSerializer(typeof(LogEntries));
+                serializer.Serialize(writer, root);
             }
         }
 
