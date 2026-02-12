@@ -90,9 +90,9 @@ namespace EasySave.Cmd.Views
                 DisplayMessage(ex.Message, useTranslation: false);
             }
 
-            if (index != 5)
+            if (index != 6)
                 WaitForKey();
-            return index == 5;
+            return index == 6;
         }
 
         // ===== MENU DRAWING =====
