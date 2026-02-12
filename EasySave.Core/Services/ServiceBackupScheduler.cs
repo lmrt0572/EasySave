@@ -4,7 +4,6 @@ using System.Text;
 
 using EasySave.Core.Models;
 
-
 namespace EasySave.Core.Services
 {
     // ===== BACKUP SCHEDULER =====
@@ -20,15 +19,16 @@ namespace EasySave.Core.Services
         }
 
         // ===== EXECUTION =====
-        public void Execute(BackupJob job)
+        public void Execute(BackupJob job, string businessSoftwareName)
         {
-            _executionService.Execute(job);
+            _ = _executionService.Execute(job, businessSoftwareName);
         }
-        public void RunSequential(IEnumerable<BackupJob> jobs)
+
+        public async Task RunSequential(IEnumerable<BackupJob> jobs, string businessSoftwareName)
         {
             foreach (var job in jobs)
             {
-                _executionService.Execute(job);
+                await _executionService.Execute(job, businessSoftwareName);
             }
         }
     }

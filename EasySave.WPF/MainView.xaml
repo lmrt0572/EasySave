@@ -1,0 +1,259 @@
+<Window x:Class="EasySave.WPF.MainView"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="EasySave 2.0" Height="700" Width="1000"
+        MinHeight="500" MinWidth="750"
+        WindowStartupLocation="CenterScreen"
+        Background="#1E1E2E">
+    
+    <Window.Resources>
+        <Style x:Key="CardStyle" TargetType="Border">
+            <Setter Property="Background" Value="#2A2A3C"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="16"/>
+            <Setter Property="Margin" Value="4"/>
+        </Style>
+        
+        <Style x:Key="PrimaryButton" TargetType="Button">
+            <Setter Property="Background" Value="#7C3AED"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" 
+                                CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#8B5CF6"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="border" Property="Background" Value="#4A4A5C"/>
+                                <Setter Property="Foreground" Value="#888"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="DangerButton" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+            <Setter Property="Background" Value="#DC2626"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" 
+                                CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#EF4444"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="border" Property="Background" Value="#4A4A5C"/>
+                                <Setter Property="Foreground" Value="#888"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SuccessButton" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+            <Setter Property="Background" Value="#059669"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" 
+                                CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#10B981"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="border" Property="Background" Value="#4A4A5C"/>
+                                <Setter Property="Foreground" Value="#888"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        
+        <Style x:Key="InputStyle" TargetType="TextBox">
+            <Setter Property="Background" Value="#1E1E2E"/>
+            <Setter Property="Foreground" Value="#E0E0E0"/>
+            <Setter Property="BorderBrush" Value="#444"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="CaretBrush" Value="White"/>
+        </Style>
+        
+        <Style x:Key="LabelStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#A0A0B8"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- ===== HEADER ===== -->
+        <Grid Grid.Row="0" Margin="0,0,0,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="EasySave 2.0" FontSize="24" FontWeight="Bold" Foreground="White" Margin="0,0,16,0"/>
+                
+                <Border x:Name="WarningBanner" Background="#7F1D1D" CornerRadius="6" 
+                        Padding="12,6" Visibility="Collapsed" VerticalAlignment="Center">
+                    <TextBlock x:Name="WarningText" Foreground="#FCA5A5" FontSize="12" FontWeight="SemiBold"
+                               Text="Business software detected - Backups blocked"/>
+                </Border>
+            </StackPanel>
+
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <Button x:Name="BtnLangEn" Content="EN" Style="{StaticResource PrimaryButton}" 
+                        Padding="12,6" Margin="4,0" Click="BtnLangEn_Click"/>
+                <Button x:Name="BtnLangFr" Content="FR" Style="{StaticResource PrimaryButton}" 
+                        Padding="12,6" Click="BtnLangFr_Click"/>
+            </StackPanel>
+        </Grid>
+        
+        <!-- ===== CREATE JOB PANEL ===== -->
+        <Border Grid.Row="1" Style="{StaticResource CardStyle}" Margin="0,0,0,8">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                
+                <TextBlock Grid.Column="0" Grid.Row="0" Style="{StaticResource LabelStyle}" x:Name="LblName" Text="Name"/>
+                <TextBlock Grid.Column="1" Grid.Row="0" Style="{StaticResource LabelStyle}" x:Name="LblSource" Text="Source Directory" Margin="8,0,0,4"/>
+                <TextBlock Grid.Column="2" Grid.Row="0" Style="{StaticResource LabelStyle}" x:Name="LblTarget" Text="Target Directory" Margin="8,0,0,4"/>
+                
+                <TextBox Grid.Column="0" Grid.Row="1" x:Name="TxtName" Style="{StaticResource InputStyle}"/>
+                <TextBox Grid.Column="1" Grid.Row="1" x:Name="TxtSource" Style="{StaticResource InputStyle}" Margin="8,0,0,0"/>
+                <TextBox Grid.Column="2" Grid.Row="1" x:Name="TxtTarget" Style="{StaticResource InputStyle}" Margin="8,0,0,0"/>
+                
+                <ComboBox Grid.Column="3" Grid.Row="1" x:Name="CmbType" Width="120" Margin="8,0,0,0"
+                          Background="#1E1E2E" Foreground="Black" FontSize="13" VerticalContentAlignment="Center">
+                    <ComboBoxItem Content="Full" IsSelected="True"/>
+                    <ComboBoxItem Content="Differential"/>
+                </ComboBox>
+                
+                <Button Grid.Column="4" Grid.Row="1" x:Name="BtnCreate" Content="+ Create" 
+                        Style="{StaticResource SuccessButton}" Margin="8,0,0,0"
+                        Click="BtnCreate_Click"/>
+            </Grid>
+        </Border>
+
+        <!-- ===== JOB LIST (SCROLLABLE) ===== -->
+        <Border Grid.Row="2" Style="{StaticResource CardStyle}" Margin="0,0,0,8">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <Grid Grid.Row="0" Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="40"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="1.5*"/>
+                        <ColumnDefinition Width="1.5*"/>
+                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="80"/>
+                        <ColumnDefinition Width="80"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="#" Foreground="#7C7C8C" FontWeight="Bold" FontSize="12"/>
+                    <TextBlock Grid.Column="1" Text="Name" Foreground="#7C7C8C" FontWeight="Bold" FontSize="12"/>
+                    <TextBlock Grid.Column="2" Text="Source" Foreground="#7C7C8C" FontWeight="Bold" FontSize="12"/>
+                    <TextBlock Grid.Column="3" Text="Target" Foreground="#7C7C8C" FontWeight="Bold" FontSize="12"/>
+                    <TextBlock Grid.Column="4" Text="Type" Foreground="#7C7C8C" FontWeight="Bold" FontSize="12"/>
+                </Grid>
+
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                    <StackPanel x:Name="JobListPanel">
+                        <TextBlock x:Name="NoJobsText" Text="No backup jobs configured" 
+                                   Foreground="#666" FontStyle="Italic" FontSize="14"
+                                   HorizontalAlignment="Center" Margin="0,40,0,0"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+
+        <!-- ===== ACTION BUTTONS ===== -->
+        <Border Grid.Row="3" Style="{StaticResource CardStyle}" Margin="0,0,0,8">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                <Button x:Name="BtnExecuteSelected" Content="Execute Selected" 
+                        Style="{StaticResource PrimaryButton}" Margin="4,0"
+                        Click="BtnExecuteSelected_Click"/>
+                <Button x:Name="BtnExecuteAll" Content="Execute All" 
+                        Style="{StaticResource PrimaryButton}" Margin="4,0"
+                        Click="BtnExecuteAll_Click"/>
+                <Button x:Name="BtnDeleteSelected" Content="Delete Selected" 
+                        Style="{StaticResource DangerButton}" Margin="4,0"
+                        Click="BtnDeleteSelected_Click"/>
+            </StackPanel>
+        </Border>
+
+        <!-- ===== SETTINGS ===== -->
+        <Border Grid.Row="4" Style="{StaticResource CardStyle}" Margin="0,0,0,8">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock x:Name="LblSettings" Text="Business software process:" 
+                           Foreground="#A0A0B8" FontSize="13" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                <TextBox x:Name="TxtBusinessSoftware" Style="{StaticResource InputStyle}" 
+                         Width="200" Text="CalculatorApp"
+                         TextChanged="TxtBusinessSoftware_TextChanged"/>
+                <TextBlock x:Name="LblMonitorStatus" Text="" Foreground="#059669" FontSize="12"
+                           VerticalAlignment="Center" Margin="12,0,0,0"/>
+            </StackPanel>
+        </Border>
+
+        <!-- ===== STATUS BAR ===== -->
+        <Border Grid.Row="5" Background="#2A2A3C" CornerRadius="6" Padding="12,8">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="TxtStatus" Grid.Column="0" Text="Ready" 
+                           Foreground="#A0A0B8" FontSize="12" VerticalAlignment="Center"/>
+                <TextBlock x:Name="TxtJobCount" Grid.Column="1" Text="0 jobs" 
+                           Foreground="#7C7C8C" FontSize="12" VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

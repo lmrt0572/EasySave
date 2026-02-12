@@ -4,11 +4,13 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using EasyLog.Models;
 using EasyLog.Services;
 using EasySave.Core.Models;
 using EasySave.Core.Models.Enums;
 using EasySave.Core.Strategies;
+using EasySave.Core.Utils;
 
 namespace EasySave.Core.Services
 {
@@ -18,6 +20,7 @@ namespace EasySave.Core.Services
         private readonly IBackupStrategy _strategy;
         private readonly ILogService _logService;
         private readonly IStateService _stateService;
+        private readonly IEncryptionService _encryptionService;
         private int _totalFiles;
         private int _completedFiles;
         private string _currentFile = "";
@@ -26,17 +29,18 @@ namespace EasySave.Core.Services
         public event Action<BackupJobState>? StateUpdated;
 
         // ===== CONSTRUCTOR =====
-        public ServiceBackupExecution(IBackupStrategy strategy, ILogService logService, IStateService stateService)
+        public ServiceBackupExecution(IBackupStrategy strategy, ILogService logService, IStateService stateService, IEncryptionService encryptionService)
         {
             _strategy = strategy;
             _logService = logService;
             _stateService = stateService;
+            _encryptionService = encryptionService;
         }
 
         // ===== PUBLIC METHODS =====
 
         /// <summary>Execute backup (V1.0 compatible - no cancellation)</summary>
-        public void Execute(BackupJob job)
+        public async Task Execute(BackupJob job)
         {
             Execute(job, CancellationToken.None);
         }
@@ -63,24 +67,49 @@ namespace EasySave.Core.Services
             bool wasCancelled = false;
 
             // --- Strategy Execution Loop ---
-            _strategy.Execute(job, (source, target, size, timeMs) =>
+            try
             {
-                _currentFile = source;
-                _completedFiles++;
-
-                DisplayProgressBar(job.Name);
-
-                // --- Real-Time State Update ---
-                if (timeMs < 0)
+                await _strategy.Execute(job, _encryptionService, (source, target, size, timeMs, cryptTime) =>
                 {
-                    state.SetError();
-                }
-                else
-                {
-                    state.UpdateCurrentFile(source, target);
-                    state.CompleteFile(size);
-                }
+                    if (FileUtils.IsProcessRunning(businessSoftwareName))
+                    {
+                        throw new OperationCanceledException($"[ABORT] {businessSoftwareName} was opened. Safety stop triggered.");
+                    }
 
+                    _currentFile = source;
+                    _completedFiles++;
+
+                    DisplayProgressBar(job.Name);
+
+                    // --- Real-Time State Update ---
+                    if (timeMs < 0)
+                    {
+                        state.SetError();
+                    }
+                    else
+                    {
+                        state.UpdateCurrentFile(source, target);
+                        state.CompleteFile(size);
+                    }
+
+                    _stateService.UpdateJobState(state);
+                    StateUpdated?.Invoke(state);
+
+                    // --- Activity Logging ---
+                    _logService.Write(new ModelLogEntry
+                    {
+                        Timestamp = DateTime.Now,
+                        JobName = job.Name,
+                        SourcePath = source,
+                        TargetPath = target,
+                        FileSize = size,
+                        TransferTimeMs = timeMs,
+                        EncryptionTimeMs = cryptTime
+                    });
+                });
+
+                // --- Job Finalization ---
+                state.Finish();
                 _stateService.UpdateJobState(state);
                 StateUpdated?.Invoke(state);
 

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -12,7 +12,6 @@ namespace EasyLog.Models
 
         public string JobName { get; set; } = string.Empty;
 
-        // Source and target paths are provided by EasySave (already normalized/UNC)
         public string SourcePath { get; set; } = string.Empty;
 
         public string TargetPath { get; set; } = string.Empty;
@@ -20,5 +19,11 @@ namespace EasyLog.Models
         public long FileSize { get; set; }
 
         public long TransferTimeMs { get; set; }
+
+        public string? EventType { get; set; }
+
+        public string? EventDetails { get; set; }
+      
+        public int EncryptionTimeMs { get; set; }
     }
 }

@@ -1,13 +1,15 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text.Json;
 using EasySave.Core.Models;
 using EasySave.Core.Models.Enums; 
 using EasySave.Core.Services;
 using EasySave.Core.Strategies;
 using EasySave.Core.Utils;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text.Json;
+using System.Threading.Tasks;
+using System.Xml.Linq;
 
 namespace EasySave.Core.ViewModels
 {
@@ -18,10 +20,14 @@ namespace EasySave.Core.ViewModels
 
         // ===== PRIVATE MEMBERS =====
         private List<BackupJob> _jobs;
+        private string _encryptionKey;
+        private List<string> _encryptionExtensions;
+        private string _businessSoftwareName;
         private readonly string _configPath;
         private readonly LanguageManager _languageManager;
         private readonly ServiceCommandLineParser _parser;
         private readonly IStateService _stateService;
+        private IEncryptionService _encryptionService = null!;  
 
         // ===== CONSTRUCTOR =====
         public MainViewModel(LanguageManager languageManager)
@@ -31,6 +37,11 @@ namespace EasySave.Core.ViewModels
             _stateService = new StateService();
             _jobs = new List<BackupJob>();
 
+            // Initial default values
+            _encryptionKey = "Prosoft123";
+            _encryptionExtensions = new List<string> { ".txt, .md, .pdf" };
+            _businessSoftwareName = "CalculatorApp";
+
             // Setup config path
             string appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             string configDir = Path.Combine(appDataPath, "EasySave");
@@ -39,13 +50,38 @@ namespace EasySave.Core.ViewModels
 
             // Load existing jobs
             LoadJobs();
+
+            // Initialize encryption service with loaded settings
+            UpdateEncryptionService();
+        }
+
+        // ===== SETTINGS MANAGEMENT =====
+        public string GetEncryptionKey() => _encryptionKey;
+        public List<string> GetEncryptionExtensions() => _encryptionExtensions;
+        public string GetBusinessSoftware() => _businessSoftwareName;
+
+        public void UpdateSettings(string key, List<string> extensions, string businessSoftware)
+        {
+            _encryptionKey = key;
+            _encryptionExtensions = extensions;
+            _businessSoftwareName = businessSoftware;
+            UpdateEncryptionService();
+            SaveJobs();
+        }
+
+        private void UpdateEncryptionService()
+        {
+            _encryptionService = new EncryptionService(
+                exePath: Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "CryptoSoft.exe"),
+                key: _encryptionKey,
+                extensions: _encryptionExtensions
+            );
         }
 
         // ===== LANGUAGE =====
         public LanguageManager GetLanguageManager() => _languageManager;
 
         // ===== JOB MANAGEMENT ===== 
-
         public List<BackupJob> GetAllJobs() => _jobs.ToList();
 
         public BackupJob? GetJob(int index)
@@ -112,7 +148,7 @@ namespace EasySave.Core.ViewModels
 
         // ===== EXECUTION ===== 
 
-        public void ExecuteJob(int index)
+        public async Task ExecuteJob(int index)
         {
             // Convert 1-based to 0-based index
             int zeroBasedIndex = index - 1;
@@ -121,29 +157,29 @@ namespace EasySave.Core.ViewModels
             if (job == null)
                 return;
 
-            ExecuteSingleJob(job);
+            await ExecuteSingleJob(job);
         }
 
-        public void ExecuteAllJobs()
+        public async Task ExecuteAllJobs()
         {
             foreach (var job in _jobs)
             {
-                ExecuteSingleJob(job);
+                await ExecuteSingleJob(job);
             }
         }
 
-        public void ExecuteSelectedJobs(IEnumerable<int> indices)
+        public async Task ExecuteSelectedJobs(IEnumerable<int> indices)
         {
             foreach (int index in indices)
             {
                 if (index >= 0 && index < _jobs.Count)
                 {
-                    ExecuteSingleJob(_jobs[index]);
+                    await ExecuteSingleJob(_jobs[index]);
                 }
             }
         }
 
-        private void ExecuteSingleJob(BackupJob job)
+        private async Task ExecuteSingleJob(BackupJob job)
         {
             // Select strategy based on job type
             IBackupStrategy strategy = job.Type == BackupType.Full
@@ -152,15 +188,15 @@ namespace EasySave.Core.ViewModels
 
             // Create execution service
             var logService = EasyLog.Services.LogService.Instance;
-            var execution = new ServiceBackupExecution(strategy, logService, _stateService);
+            var execution = new ServiceBackupExecution(strategy, logService, _stateService, _encryptionService);
 
             // Execute
-            execution.Execute(job);
+            await execution.Execute(job, _businessSoftwareName);
         }
 
         // ===== CLI MODE ===== 
 
-        public void RunCli(string[] args)
+        public async Task RunCli(string[] args)
         {
             if (args == null || args.Length == 0)
                 return;
@@ -224,11 +260,10 @@ namespace EasySave.Core.ViewModels
             Console.WriteLine($"  Executing job(s): {string.Join(", ", validIndices.Select(i => i + 1))}");
             Console.WriteLine();
 
-            ExecuteSelectedJobs(validIndices);
+            await ExecuteSelectedJobs(validIndices);
         }
 
         // ===== PERSISTENCE ===== 
-
         private void LoadJobs()
         {
             if (!File.Exists(_configPath))
@@ -240,14 +275,21 @@ namespace EasySave.Core.ViewModels
             try
             {
                 string json = File.ReadAllText(_configPath);
-                var jobDtos = JsonSerializer.Deserialize<List<BackupJobDto>>(json);
+                var configDto = JsonSerializer.Deserialize<AppConfigDto>(json);
 
-                _jobs = jobDtos?.Select(dto => new BackupJob(
-                    dto.Name ?? string.Empty,
-                    dto.SourceDirectory ?? string.Empty,
-                    dto.TargetDirectory ?? string.Empty,
-                    dto.Type
-                )).ToList() ?? new List<BackupJob>();
+                if (configDto != null)
+                {
+                    _encryptionKey = configDto.EncryptionKey ?? "DefaultKey";
+                    _encryptionExtensions = configDto.EncryptionExtensions ?? new List<string> { ".txt" };
+                    _businessSoftwareName = configDto.BusinessSoftwareName ?? "CalculatorApp";
+
+                    _jobs = configDto.Jobs?.Select(dto => new BackupJob(
+                        dto.Name ?? string.Empty,
+                        dto.SourceDirectory ?? string.Empty,
+                        dto.TargetDirectory ?? string.Empty,
+                        dto.Type
+                    )).ToList() ?? new List<BackupJob>();
+                }
             }
             catch
             {
@@ -257,20 +299,33 @@ namespace EasySave.Core.ViewModels
 
         private void SaveJobs()
         {
-            var jobDtos = _jobs.Select(j => new BackupJobDto
+            var configDto = new AppConfigDto
             {
-                Name = j.Name,
-                SourceDirectory = j.SourceDirectory,
-                TargetDirectory = j.TargetDirectory,
-                Type = j.Type
-            }).ToList();
+                EncryptionKey = _encryptionKey,
+                EncryptionExtensions = _encryptionExtensions,
+                BusinessSoftwareName = _businessSoftwareName,
+                Jobs = _jobs.Select(j => new BackupJobDto
+                {
+                    Name = j.Name,
+                    SourceDirectory = j.SourceDirectory,
+                    TargetDirectory = j.TargetDirectory,
+                    Type = j.Type
+                }).ToList()
+            };
 
             var options = new JsonSerializerOptions { WriteIndented = true };
-            string json = JsonSerializer.Serialize(jobDtos, options);
+            string json = JsonSerializer.Serialize(configDto, options);
             File.WriteAllText(_configPath, json);
         }
-
         // ===== DTO ===== 
+        private class AppConfigDto
+        {
+            public string? EncryptionKey { get; set; }
+            public List<string>? EncryptionExtensions { get; set; }
+            public string? BusinessSoftwareName { get; set; }
+            public List<BackupJobDto>? Jobs { get; set; }
+        }
+
         private class BackupJobDto
         {
             public string? Name { get; set; }

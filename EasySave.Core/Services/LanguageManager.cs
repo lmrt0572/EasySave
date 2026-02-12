@@ -24,15 +24,27 @@ namespace EasySave.Core.Models.Enums
                 ["menu_list"] = new() { [Language.English] = "2. List backup jobs", [Language.French] = "2. Lister les travaux" },
                 ["menu_execute"] = new() { [Language.English] = "3. Execute backup job", [Language.French] = "3. Exécuter une sauvegarde" },
                 ["menu_delete"] = new() { [Language.English] = "4. Delete backup job", [Language.French] = "4. Supprimer un travail" },
-                ["menu_language"] = new() { [Language.English] = "5. Change language", [Language.French] = "5. Changer la langue" },
-                ["menu_quit"] = new() { [Language.English] = "6. Quit", [Language.French] = "6. Quitter" },
+                ["menu_settings"] = new() { [Language.English] = "5. Settings", [Language.French] = "5. Paramètres" },
+                ["menu_language"] = new() { [Language.English] = "6. Change language", [Language.French] = "6. Changer la langue" },
+                ["menu_quit"] = new() { [Language.English] = "7. Quit", [Language.French] = "7. Quitter" },
                 ["menu_choice"] = new() { [Language.English] = "Your choice: ", [Language.French] = "Votre choix : " },
+
+                // Settings
+                ["settings_title"] = new() { [Language.English] = "--- CONFIGURATION ---", [Language.French] = "--- CONFIGURATION ---" },
+                ["settings_current_key"] = new() { [Language.English] = "Current Encryption Key: {0}", [Language.French] = "Clé de chiffrement actuelle : {0}" },
+                ["settings_prompt_key"] = new() { [Language.English] = "Enter new key (leave empty to keep current): ", [Language.French] = "Entrez la nouvelle clé (vide pour garder l'actuelle) : " },
+                ["settings_current_extensions"] = new() { [Language.English] = "Current Extensions: {0}", [Language.French] = "Extensions actuelles : {0}" },
+                ["settings_prompt_extensions"] = new() { [Language.English] = "Enter extensions (comma separated, ex: .txt,.pdf): ", [Language.French] = "Entrez les extensions (séparées par virgule, ex: .txt,.pdf) : " },
+                ["settings_current_software"] = new() { [Language.English] = "Current Business Software: {0}", [Language.French] = "Logiciel métier actuel : {0}" },
+                ["settings_prompt_software"] = new() { [Language.English] = "Enter software process name: ", [Language.French] = "Entrez le nom du processus logiciel : " },
+                ["settings_success"] = new() { [Language.English] = "Settings updated and saved!", [Language.French] = "Paramètres mis à jour et sauvegardés !" },
 
                 // Messages confirmation
                 ["job_created"] = new() { [Language.English] = "Backup job created successfully", [Language.French] = "Travail de sauvegarde créé avec succès" },
                 ["job_deleted"] = new() { [Language.English] = "Backup job deleted", [Language.French] = "Travail supprimé" },
                 ["job_executed"] = new() { [Language.English] = "Backup completed", [Language.French] = "Sauvegarde terminée" },
                 ["language_changed"] = new() { [Language.English] = "Language changed", [Language.French] = "Langue changée" },
+                ["press_any_key"] = new() { [Language.English] = "Press any key...", [Language.French] = "Appuyez sur une touche..." },
 
                 // Messages erreur
                 ["error_max_jobs"] = new() { [Language.English] = "Error: Maximum 5 jobs allowed", [Language.French] = "Erreur : Maximum 5 travaux autorisés" },
@@ -56,6 +68,7 @@ namespace EasySave.Core.Models.Enums
                 ["status_inactive"] = new() { [Language.English] = "Inactive", [Language.French] = "Inactif" },
                 ["status_completed"] = new() { [Language.English] = "Completed", [Language.French] = "Terminé" },
                 ["status_error"] = new() { [Language.English] = "Error", [Language.French] = "Erreur" },
+                ["status_stopped"] = new() { [Language.English] = "Stopped", [Language.French] = "Arrêté" },
 
                 // Progress
                 ["progress_files"] = new() { [Language.English] = "Files: {0}/{1}", [Language.French] = "Fichiers : {0}/{1}" },
@@ -71,7 +84,47 @@ namespace EasySave.Core.Models.Enums
                 ["job_name"] = new() { [Language.English] = "Name: ", [Language.French] = "Nom : " },
                 ["job_source"] = new() { [Language.English] = "Source: ", [Language.French] = "Source : " },
                 ["job_target"] = new() { [Language.English] = "Target: ", [Language.French] = "Cible : " },
-                ["job_type"] = new() { [Language.English] = "Type: ", [Language.French] = "Type : " }
+                ["job_type"] = new() { [Language.English] = "Type: ", [Language.French] = "Type : " },
+
+                // ===== V2.0 - Business Software Detection =====
+                ["error_business_software"] = new()
+                {
+                    [Language.English] = "⚠ Business software detected! Backup execution is blocked.",
+                    [Language.French] = "⚠ Logiciel métier détecté ! L'exécution des sauvegardes est bloquée."
+                },
+                ["business_software_cleared"] = new()
+                {
+                    [Language.English] = "✓ Business software no longer detected. Backups can resume.",
+                    [Language.French] = "✓ Logiciel métier non détecté. Les sauvegardes peuvent reprendre."
+                },
+                ["job_stopped_business_software"] = new()
+                {
+                    [Language.English] = "Backup stopped: business software was detected during execution.",
+                    [Language.French] = "Sauvegarde arrêtée : logiciel métier détecté pendant l'exécution."
+                },
+                ["settings_title"] = new()
+                {
+                    [Language.English] = "Settings",
+                    [Language.French] = "Paramètres"
+                },
+                ["settings_business_software"] = new()
+                {
+                    [Language.English] = "Business software process name:",
+                    [Language.French] = "Nom du processus du logiciel métier :"
+                },
+                ["wpf_title"] = new()
+                {
+                    [Language.English] = "EasySave 2.0",
+                    [Language.French] = "EasySave 2.0"
+                },
+                ["btn_create"] = new() { [Language.English] = "Create Job", [Language.French] = "Créer" },
+                ["btn_delete"] = new() { [Language.English] = "Delete", [Language.French] = "Supprimer" },
+                ["btn_execute"] = new() { [Language.English] = "Execute", [Language.French] = "Exécuter" },
+                ["btn_execute_all"] = new() { [Language.English] = "Execute All", [Language.French] = "Tout exécuter" },
+                ["col_name"] = new() { [Language.English] = "Name", [Language.French] = "Nom" },
+                ["col_source"] = new() { [Language.English] = "Source", [Language.French] = "Source" },
+                ["col_target"] = new() { [Language.English] = "Target", [Language.French] = "Cible" },
+                ["col_type"] = new() { [Language.English] = "Type", [Language.French] = "Type" }
             };
         }
 
