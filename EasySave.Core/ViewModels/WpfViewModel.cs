@@ -23,7 +23,7 @@ namespace EasySave.Core.ViewModels
     //   - Business software detection (#12, #13, #14, #15)
     //   - INotifyPropertyChanged for WPF data binding
     //   - Observable collections for UI reactivity
-    public class WpfViewModel : INotifyPropertyChanged
+    public class WpfViewModel : INotifyPropertyChanged, IDisposable
     {
         // ===== PRIVATE MEMBERS =====
         private List<BackupJob> _jobs;
@@ -32,6 +32,10 @@ namespace EasySave.Core.ViewModels
         private readonly IStateService _stateService;
         private readonly BusinessSoftwareMonitor _monitor;
         private CancellationTokenSource? _currentCts;
+
+        private string _encryptionKey = "Prosoft123";
+        private List<string> _encryptionExtensions = new List<string> { ".txt", ".md", ".pdf" };
+        private IEncryptionService _encryptionService = null!;
 
         private string _businessSoftwareName = "CalculatorApp";
         private bool _isBusinessSoftwareDetected;
@@ -92,12 +96,10 @@ namespace EasySave.Core.ViewModels
             Directory.CreateDirectory(configDir);
             _configPath = Path.Combine(configDir, "config.json");
 
-            // Load jobs
             LoadJobs();
-            RefreshObservableJobs();
-
-            // Load settings (business software name)
             LoadSettings();
+            UpdateEncryptionService();
+            RefreshObservableJobs();
 
             // Business software monitor (#12)
             _monitor = BusinessSoftwareMonitor.Instance;
@@ -168,9 +170,9 @@ namespace EasySave.Core.ViewModels
             return true;
         }
 
-        // ===== EXECUTION WITH BUSINESS SOFTWARE CHECK (#13, #14) =====
+        // ===== EXECUTION =====
 
-        public void ExecuteJob(BackupJob job)
+        public async Task ExecuteJob(BackupJob job)
         {
             if (job == null) return;
 
@@ -187,14 +189,12 @@ namespace EasySave.Core.ViewModels
 
             try
             {
-                ExecuteSingleJob(job, _currentCts.Token);
+                await ExecuteSingleJob(job, _currentCts.Token);
+                StatusMessage = _languageManager.GetText("job_executed");
             }
             catch (OperationCanceledException)
             {
-                // #14 - Job was stopped by business software detection
                 StatusMessage = _languageManager.GetText("job_stopped_business_software");
-
-                // #15 - Log the stop event
                 LogBusinessSoftwareStop(job.Name);
             }
             catch (Exception ex)
@@ -209,7 +209,7 @@ namespace EasySave.Core.ViewModels
             }
         }
 
-        public void ExecuteAllJobs()
+        public async Task ExecuteAllJobs()
         {
             // #13 - Block if business software detected
             if (_monitor.CheckNow())
@@ -234,7 +234,7 @@ namespace EasySave.Core.ViewModels
                         break;
                     }
 
-                    ExecuteSingleJob(job, _currentCts.Token);
+                    await ExecuteSingleJob(job, _currentCts.Token);
                 }
 
                 if (!_currentCts.IsCancellationRequested)
@@ -256,16 +256,25 @@ namespace EasySave.Core.ViewModels
             }
         }
 
-        private void ExecuteSingleJob(BackupJob job, CancellationToken token)
+        private async Task ExecuteSingleJob(BackupJob job, CancellationToken token)
         {
             IBackupStrategy strategy = job.Type == BackupType.Full
                 ? new FullBackupStrategy()
                 : new DifferentialBackupStrategy();
 
             var logService = LogService.Instance;
-            var execution = new ServiceBackupExecution(strategy, logService, _stateService);
+            var execution = new ServiceBackupExecution(strategy, logService, _stateService, _encryptionService);
 
-            execution.Execute(job, token);
+            await execution.Execute(job, _businessSoftwareName, token);
+        }
+
+        private void UpdateEncryptionService()
+        {
+            _encryptionService = new EncryptionService(
+                exePath: Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "CryptoSoft.exe"),
+                key: _encryptionKey,
+                extensions: _encryptionExtensions
+            );
         }
 
         // ===== BUSINESS SOFTWARE DETECTION HANDLER =====
@@ -362,31 +371,30 @@ namespace EasySave.Core.ViewModels
 
         private void LoadSettings()
         {
+            if (!File.Exists(SettingsPath)) return;
             try
             {
-                if (File.Exists(SettingsPath))
+                string json = File.ReadAllText(SettingsPath);
+                var settings = JsonSerializer.Deserialize<AppSettings>(json);
+                if (settings != null)
                 {
-                    string json = File.ReadAllText(SettingsPath);
-                    var settings = JsonSerializer.Deserialize<AppSettings>(json);
-                    if (settings != null)
-                    {
-                        _businessSoftwareName = settings.BusinessSoftwareName ?? "CalculatorApp";
-                    }
+                    _businessSoftwareName = settings.BusinessSoftwareName ?? "CalculatorApp";
+                    _encryptionKey = settings.EncryptionKey ?? "Prosoft123";
+                    _encryptionExtensions = settings.EncryptionExtensions ?? new List<string> { ".txt" };
                 }
             }
-            catch { /* use defaults */ }
+            catch { /* fallback to defaults */ }
         }
 
         private void SaveSettings()
         {
-            try
+            var settings = new AppSettings
             {
-                var settings = new AppSettings { BusinessSoftwareName = _businessSoftwareName };
-                var options = new JsonSerializerOptions { WriteIndented = true };
-                string json = JsonSerializer.Serialize(settings, options);
-                File.WriteAllText(SettingsPath, json);
-            }
-            catch { /* silent fail */ }
+                BusinessSoftwareName = _businessSoftwareName,
+                EncryptionKey = _encryptionKey,
+                EncryptionExtensions = _encryptionExtensions
+            };
+            File.WriteAllText(SettingsPath, JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true }));
         }
 
         // ===== HELPERS =====
@@ -423,6 +431,8 @@ namespace EasySave.Core.ViewModels
         private class AppSettings
         {
             public string? BusinessSoftwareName { get; set; }
+            public string? EncryptionKey { get; set; }
+            public List<string>? EncryptionExtensions { get; set; }
         }
     }
 }

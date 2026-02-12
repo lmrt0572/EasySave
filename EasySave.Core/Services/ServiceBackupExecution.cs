@@ -31,23 +31,32 @@ namespace EasySave.Core.Services
         // ===== CONSTRUCTOR =====
         public ServiceBackupExecution(IBackupStrategy strategy, ILogService logService, IStateService stateService, IEncryptionService encryptionService)
         {
-            _strategy = strategy;
-            _logService = logService;
-            _stateService = stateService;
-            _encryptionService = encryptionService;
+            _strategy = strategy ?? throw new ArgumentNullException(nameof(strategy));
+            _logService = logService ?? throw new ArgumentNullException(nameof(logService));
+            _stateService = stateService ?? throw new ArgumentNullException(nameof(stateService));
+            _encryptionService = encryptionService ?? throw new ArgumentNullException(nameof(encryptionService));
         }
 
         // ===== PUBLIC METHODS =====
 
-        /// <summary>Execute backup (V1.0 compatible - no cancellation)</summary>
-        public async Task Execute(BackupJob job)
+        /// <summary>Execute backup (Overload for CLI/Console compatibility)</summary>
+        public async Task Execute(BackupJob job, string businessSoftwareName)
         {
-            Execute(job, CancellationToken.None);
+            await Execute(job, businessSoftwareName, CancellationToken.None);
         }
 
-        /// <summary>Execute backup with cancellation support (V2.0 - stops after current file)</summary>
-        public void Execute(BackupJob job, CancellationToken cancellationToken)
+        /// <summary>Main Execute method with Business Software detection and CancellationToken support</summary>
+        public async Task Execute(BackupJob job, string businessSoftwareName, CancellationToken cancellationToken)
         {
+            // 1. Initial check: Stop before starting if software is already running
+            if (FileUtils.IsProcessRunning(businessSoftwareName))
+            {
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine($"\n  [STOP] Business software detected: {businessSoftwareName}. Backup aborted.");
+                Console.ResetColor();
+                return;
+            }
+
             // --- Initialization & Pre-Scan ---
             var state = new BackupJobState(job.Name);
             var files = Directory.GetFiles(job.SourceDirectory, "*", SearchOption.AllDirectories);
@@ -64,16 +73,15 @@ namespace EasySave.Core.Services
             Console.WriteLine($"\n  Starting: {job.Name} ({_totalFiles} files)");
             DisplayProgressBar(job.Name);
 
-            bool wasCancelled = false;
-
             // --- Strategy Execution Loop ---
             try
             {
                 await _strategy.Execute(job, _encryptionService, (source, target, size, timeMs, cryptTime) =>
                 {
-                    if (FileUtils.IsProcessRunning(businessSoftwareName))
+                    // 2. Live Check: Business software opened OR GUI cancellation requested
+                    if (FileUtils.IsProcessRunning(businessSoftwareName) || cancellationToken.IsCancellationRequested)
                     {
-                        throw new OperationCanceledException($"[ABORT] {businessSoftwareName} was opened. Safety stop triggered.");
+                        throw new OperationCanceledException($"[ABORT] Backup interrupted for {job.Name}.");
                     }
 
                     _currentFile = source;
@@ -108,33 +116,16 @@ namespace EasySave.Core.Services
                     });
                 });
 
-                // --- Job Finalization ---
+                // --- Normal Job Finalization ---
                 state.Finish();
                 _stateService.UpdateJobState(state);
                 StateUpdated?.Invoke(state);
 
-                // --- Activity Logging ---
-                _logService.Write(new ModelLogEntry
-                {
-                    Timestamp = DateTime.Now,
-                    JobName = job.Name,
-                    SourcePath = source,
-                    TargetPath = target,
-                    FileSize = size,
-                    TransferTimeMs = timeMs
-                });
-
-                // V2.0 - Check cancellation AFTER current file is finished (#14)
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    wasCancelled = true;
-                    throw new OperationCanceledException("Backup stopped: business software detected.");
-                }
-            });
-
-            // --- Job Finalization ---
-            if (wasCancelled)
+                DisplayProgressComplete(job.Name);
+            }
+            catch (OperationCanceledException)
             {
+                // 3. Handling the safety stop (Colleague's Logic for state status)
                 state.Status = BackupStatus.Stopped;
                 state.Timestamp = DateTime.Now;
                 _stateService.UpdateJobState(state);
@@ -142,18 +133,13 @@ namespace EasySave.Core.Services
 
                 Console.WriteLine();
                 Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine($"  ⚠ {job.Name} stopped (business software detected)");
+                Console.WriteLine($"  ⚠ {job.Name} stopped (software detected or user cancellation)");
                 Console.ResetColor();
             }
-            else
+            finally
             {
-                state.Finish();
-                _stateService.UpdateJobState(state);
-                StateUpdated?.Invoke(state);
-                DisplayProgressComplete(job.Name);
+                _logService.Flush();
             }
-
-            _logService.Flush();
         }
 
         // ===== PROGRESS BAR =====
