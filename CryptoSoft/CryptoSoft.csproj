@@ -2,14 +2,12 @@
 
 	<PropertyGroup>
 		<OutputType>Exe</OutputType>
-		<TargetFramework>net8.0</TargetFramework>
+		<TargetFramework>net10.0</TargetFramework>
+		<RollForward>Major</RollForward>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
-		<!-- Publish options -->
-		<PublishSingleFile>true</PublishSingleFile>
-		<SelfContained>true</SelfContained>
-		<PublishTrimmed>true</PublishTrimmed>
-		<!-- Branding -->
+
+		<PublishTrimmed>false</PublishTrimmed>
 		<Authors>ProSoft</Authors>
 		<Company>ProSoft</Company>
 		<Product>CryptoSoft</Product>
@@ -23,5 +21,8 @@
 		<PublishAot>False</PublishAot>
 		<SignAssembly>False</SignAssembly>
 	</PropertyGroup>
+	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
+		<Exec Command="xcopy /Y &quot;$(TargetDir)*.*&quot; &quot;$(SolutionDir)EasySave.Console\bin\$(Configuration)\net10.0\&quot;" />
+	</Target>
 
 </Project>
