@@ -291,6 +291,13 @@ namespace EasySave.Core.ViewModels
         // ===== SINGLE JOB EXECUTION =====
         private async Task ExecuteSingleJob(BackupJob job, CancellationToken token)
         {
+            string exePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "CryptoSoft.exe");
+            if (!File.Exists(exePath))
+            {
+                StatusMessage = "ERROR : CryptoSoft.exe could not be found";
+                return;
+            }
+
             // --- Select strategy based on job type ---
             IBackupStrategy strategy = job.Type == BackupType.Full
                 ? new FullBackupStrategy()

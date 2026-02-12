@@ -3,5 +3,7 @@
   <Project Path="EasyLog/EasyLog.csproj" />
   <Project Path="EasySave.Console/EasySave.Console.csproj" Id="282111b4-331a-42da-9207-31456aabdf6e" />
   <Project Path="EasySave.Core/EasySave.Core.csproj" Id="580b2c16-1541-42ab-b61f-bdaeda23bf4f" />
-  <Project Path="EasySave.WPF/EasySave.WPF.csproj" Id="67032c9b-eea4-41c6-8057-314546bf1d35" />
+  <Project Path="EasySave.WPF/EasySave.WPF.csproj" Id="67032c9b-eea4-41c6-8057-314546bf1d35">
+    <BuildDependency Project="CryptoSoft/CryptoSoft.csproj" />
+  </Project>
 </Solution>
