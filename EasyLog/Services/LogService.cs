@@ -1,4 +1,4 @@
-﻿using EasyLog.Models;
+using EasyLog.Models;
 using EasyLog.Services.Strategies;
 using System;
 using System.Collections.Generic;
@@ -44,24 +44,23 @@ namespace EasyLog.Services
                 _currentWriter?.Close();
                 _currentWriter = null;
 
-                // Strategy Changing
-                _currentStrategy = format == ILogFormatStrategy.Json
+                // Strategy changing
+                _currentStrategy = format == LogFormat.Json
                     ? new JsonLogStrategy()
                     : new XmlLogStrategy();
 
                 // Migrate existing logs
                 MigrateLogsToNewFormat(format);
+
+                _currentLogFile = null;
             }
-
-            _currentLogFile = null;
-
         }
         // ===== MIGRATION =====
 
         private void MigrateLogsToNewFormat(LogFormat newFormat)
         {
             string today = DateTime.Now.ToString("yyyy-MM-dd");
-            string oldExtension = newFormat == LogFormat.Json ? "xml" : ".json";
+            string oldExtension = newFormat == LogFormat.Json ? ".xml" : ".json";
             string newExtension = _currentStrategy.GetFileExtension();
             string oldFile = Path.Combine(_logDirectory, $"{today}{oldExtension}");
             string newFile = Path.Combine(_logDirectory, $"{today}{newExtension}");
@@ -73,15 +72,22 @@ namespace EasyLog.Services
             var entries = ReadEntriesFromFile(oldFile, oldExtension);
 
             // Writing in new format
-            using (var writer = new StreamWriter(newFile, append: false))
+            try
             {
-                foreach (var entry in entries)
+                using (var writer = new StreamWriter(newFile, append: false))
                 {
-                    _currentStrategy.WriteEntry(writer, entry);
+                    foreach (var entry in entries)
+                    {
+                        _currentStrategy.WriteEntry(writer, entry);
+                    }
                 }
-            }
 
-            File.Delete(oldFile);
+                File.Delete(oldFile);
+            }
+            catch
+            {
+                // Ignore migration errors to avoid breaking the main application
+            }
         }
 
         // ===== INPUTS READING =====
@@ -91,7 +97,16 @@ namespace EasyLog.Services
 
             if (extension == ".json")
             {
-                string content = File.ReadAllText(filePath);
+                string content;
+                try
+                {
+                    content = File.ReadAllText(filePath);
+                }
+                catch
+                {
+                    return entries;
+                }
+
                 var lines = content.Split(new[] { "\r\n\r\n", "\n\n" }, StringSplitOptions.RemoveEmptyEntries);
 
                 foreach (var line in lines)
@@ -102,33 +117,45 @@ namespace EasyLog.Services
                         if (entry != null)
                             entries.Add(entry);
                     }
-                    catch { }
+                    catch
+                    {
+                        // Ignore malformed JSON entries
+                    }
                 }
             }
-            else //XML
+            else // XML
             {
-                using (var reader = new StreamReader(filePath))
+                try
                 {
-                    var serializer = new System.Xml.Serialization.XmlSerializer(typeof(ModelLogEntry));
-                    string content = reader.ReadToEnd();
-
-                    var xmlDocs = content.Split(new[] { "<?xml" }, StringSplitOptions.RemoveEmptyEntries);
-
-                    foreach (var xmlDoc in xmlDocs)
+                    using (var reader = new StreamReader(filePath))
                     {
-                        try
+                        var serializer = new System.Xml.Serialization.XmlSerializer(typeof(ModelLogEntry));
+                        string content = reader.ReadToEnd();
+
+                        var xmlDocs = content.Split(new[] { "<?xml" }, StringSplitOptions.RemoveEmptyEntries);
+
+                        foreach (var xmlDoc in xmlDocs)
                         {
-                            string fullXml = "<?xml" + xmlDoc.Trim();
-                            using (var stringReader = new StringReader(fullXml))
+                            try
                             {
-                                var entry = (ModelLogEntry?)serializer.Deserialize(stringReader);
-                                if (entry != null)
-                                    entries.Add(entry);
+                                string fullXml = "<?xml" + xmlDoc.Trim();
+                                using (var stringReader = new StringReader(fullXml))
+                                {
+                                    var entry = (ModelLogEntry?)serializer.Deserialize(stringReader);
+                                    if (entry != null)
+                                        entries.Add(entry);
+                                }
+                            }
+                            catch
+                            {
+                                // Ignore malformed XML entries
                             }
                         }
-                        catch { }
                     }
-
+                }
+                catch
+                {
+                    // Ignore errors while reading XML log file
                 }
             }
 
@@ -145,16 +172,32 @@ namespace EasyLog.Services
             {
                 string today = DateTime.Now.ToString("yyyy-MM-dd");
                 string extension = _currentStrategy.GetFileExtension();
-                string todayFile = Path.Combine(_logDirectory, $"{today}.json");
+                string todayFile = Path.Combine(_logDirectory, $"{today}{extension}");
 
                 if (_currentLogFile != todayFile)
                 {
-                    _currentWriter?.Close();
-                    _currentWriter = new StreamWriter(todayFile, append: true);
-                    _currentLogFile = todayFile;
+                    try
+                    {
+                        _currentWriter?.Close();
+                        _currentWriter = new StreamWriter(todayFile, append: true);
+                        _currentLogFile = todayFile;
+                    }
+                    catch
+                    {
+                        _currentWriter = null;
+                        _currentLogFile = null;
+                        return;
+                    }
                 }
 
-                _currentStrategy.WriteEntry(_currentWriter, entry);
+                try
+                {
+                    _currentStrategy.WriteEntry(_currentWriter!, entry);
+                }
+                catch
+                {
+                    // Ignore logging errors
+                }
             }
         }
 

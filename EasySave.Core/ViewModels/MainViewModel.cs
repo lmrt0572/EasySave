@@ -237,24 +237,60 @@ namespace EasySave.Core.ViewModels
             if (!File.Exists(_configPath))
             {
                 _jobs = new List<BackupJob>();
+                _currentLogFormat = LogFormat.Json;
+                EasyLog.Services.LogService.Instance.SetLogFormat(_currentLogFormat);
                 return;
             }
 
             try
             {
                 string json = File.ReadAllText(_configPath);
-                var jobDtos = JsonSerializer.Deserialize<List<BackupJobDto>>(json);
+                if (string.IsNullOrWhiteSpace(json))
+                {
+                    _jobs = new List<BackupJob>();
+                    _currentLogFormat = LogFormat.Json;
+                    EasyLog.Services.LogService.Instance.SetLogFormat(_currentLogFormat);
+                    return;
+                }
 
-                _jobs = jobDtos?.Select(dto => new BackupJob(
-                    dto.Name ?? string.Empty,
-                    dto.SourceDirectory ?? string.Empty,
-                    dto.TargetDirectory ?? string.Empty,
-                    dto.Type
-                )).ToList() ?? new List<BackupJob>();
+                json = json.TrimStart();
+
+                // Backward compatibility: old format was a plain array of jobs
+                if (json.StartsWith("["))
+                {
+                    var jobDtos = JsonSerializer.Deserialize<List<BackupJobDto>>(json);
+
+                    _jobs = jobDtos?.Select(dto => new BackupJob(
+                        dto.Name ?? string.Empty,
+                        dto.SourceDirectory ?? string.Empty,
+                        dto.TargetDirectory ?? string.Empty,
+                        dto.Type
+                    )).ToList() ?? new List<BackupJob>();
+
+                    _currentLogFormat = LogFormat.Json;
+                }
+                else
+                {
+                    var config = JsonSerializer.Deserialize<ConfigDto>(json);
+                    var jobDtos = config?.Jobs ?? new List<BackupJobDto>();
+
+                    _jobs = jobDtos.Select(dto => new BackupJob(
+                        dto.Name ?? string.Empty,
+                        dto.SourceDirectory ?? string.Empty,
+                        dto.TargetDirectory ?? string.Empty,
+                        dto.Type
+                    )).ToList();
+
+                    _currentLogFormat = config?.LogFormat ?? LogFormat.Json;
+                }
+
+                EasyLog.Services.LogService.Instance.SetLogFormat(_currentLogFormat);
             }
             catch
             {
                 _jobs = new List<BackupJob>();
+                _currentLogFormat = LogFormat.Json;
+                EasyLog.Services.LogService.Instance.SetLogFormat(_currentLogFormat);
             }
         }
 
@@ -269,8 +305,21 @@ namespace EasySave.Core.ViewModels
             }).ToList();
 
             var options = new JsonSerializerOptions { WriteIndented = true };
-            string json = JsonSerializer.Serialize(jobDtos, options);
-            File.WriteAllText(_configPath, json);
+            var config = new ConfigDto
+            {
+                Jobs = jobDtos,
+                LogFormat = _currentLogFormat
+            };
+
+            try
+            {
+                string json = JsonSerializer.Serialize(config, options);
+                File.WriteAllText(_configPath, json);
+            }
+            catch
+            {
+                // Ignore config save errors
+            }
         }
 
         // ===== DTO ===== 
@@ -294,7 +343,16 @@ namespace EasySave.Core.ViewModels
 
         private void SaveLogFormatPreference(LogFormat format)
         {
-            // à compléter 
+            // Persist preference alongside jobs
+            _currentLogFormat = format;
+            SaveJobs();
+        }
+
+        // ===== CONFIG DTO =====
+        private class ConfigDto
+        {
+            public List<BackupJobDto> Jobs { get; set; } = new List<BackupJobDto>();
+            public LogFormat LogFormat { get; set; } = LogFormat.Json;
         }
     }
 }

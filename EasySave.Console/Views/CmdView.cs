@@ -304,23 +304,24 @@ namespace EasySave.Cmd.Views
 
         private void RunChangeLogFormat()
         {
-            var logService = EasyLog.Services.LogService.Instance;
+            var currentFormat = _viewModel.GetCurrentLogFormat();
+            string currentLabel = currentFormat == LogFormat.Json ? "JSON" : "XML";
 
-            DisplayMessage("Current format: " +
-                (_viewModel.GetCurrentLogFormat() == LogFormat.Json ? "JSON" : "XML"),
-                useTranslation: false);
+            DisplayMessage($"Current format: {currentLabel}", useTranslation: false);
 
-            string choice = PromptUser("Choose format (1=JSON, 2=XML): ");
+            string choice = PromptUser("prompt_log_format").Trim();
 
             if (choice == "1")
             {
                 _viewModel.SetLogFormat(LogFormat.Json);
-                DisplaySuccess("Log format changed to JSON");
+                string msg = _lang.GetText("log_format_changed", "JSON");
+                DisplayMessage(msg, useTranslation: false);
             }
             else if (choice == "2")
             {
                 _viewModel.SetLogFormat(LogFormat.Xml);
-                DisplaySuccess("Log format changed to XML");
+                string msg = _lang.GetText("log_format_changed", "XML");
+                DisplayMessage(msg, useTranslation: false);
             }
             else
             {

@@ -1,7 +1,5 @@
-﻿using EasyLog.Models;
-using System;
-using System.Collections.Generic;
-using System.Text;
+using EasyLog.Models;
+using System.IO;
 
 namespace EasyLog.Services
 {
