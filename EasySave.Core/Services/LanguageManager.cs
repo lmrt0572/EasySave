@@ -24,15 +24,27 @@ namespace EasySave.Core.Models.Enums
                 ["menu_list"] = new() { [Language.English] = "2. List backup jobs", [Language.French] = "2. Lister les travaux" },
                 ["menu_execute"] = new() { [Language.English] = "3. Execute backup job", [Language.French] = "3. Exécuter une sauvegarde" },
                 ["menu_delete"] = new() { [Language.English] = "4. Delete backup job", [Language.French] = "4. Supprimer un travail" },
-                ["menu_language"] = new() { [Language.English] = "5. Change language", [Language.French] = "5. Changer la langue" },
-                ["menu_quit"] = new() { [Language.English] = "6. Quit", [Language.French] = "6. Quitter" },
+                ["menu_settings"] = new() { [Language.English] = "5. Settings", [Language.French] = "5. Paramètres" },
+                ["menu_language"] = new() { [Language.English] = "6. Change language", [Language.French] = "6. Changer la langue" },
+                ["menu_quit"] = new() { [Language.English] = "7. Quit", [Language.French] = "7. Quitter" },
                 ["menu_choice"] = new() { [Language.English] = "Your choice: ", [Language.French] = "Votre choix : " },
+
+                // Settings
+                ["settings_title"] = new() { [Language.English] = "--- CONFIGURATION ---", [Language.French] = "--- CONFIGURATION ---" },
+                ["settings_current_key"] = new() { [Language.English] = "Current Encryption Key: {0}", [Language.French] = "Clé de chiffrement actuelle : {0}" },
+                ["settings_prompt_key"] = new() { [Language.English] = "Enter new key (leave empty to keep current): ", [Language.French] = "Entrez la nouvelle clé (vide pour garder l'actuelle) : " },
+                ["settings_current_extensions"] = new() { [Language.English] = "Current Extensions: {0}", [Language.French] = "Extensions actuelles : {0}" },
+                ["settings_prompt_extensions"] = new() { [Language.English] = "Enter extensions (comma separated, ex: .txt,.pdf): ", [Language.French] = "Entrez les extensions (séparées par virgule, ex: .txt,.pdf) : " },
+                ["settings_current_software"] = new() { [Language.English] = "Current Business Software: {0}", [Language.French] = "Logiciel métier actuel : {0}" },
+                ["settings_prompt_software"] = new() { [Language.English] = "Enter software process name: ", [Language.French] = "Entrez le nom du processus logiciel : " },
+                ["settings_success"] = new() { [Language.English] = "Settings updated and saved!", [Language.French] = "Paramètres mis à jour et sauvegardés !" },
 
                 // Messages confirmation
                 ["job_created"] = new() { [Language.English] = "Backup job created successfully", [Language.French] = "Travail de sauvegarde créé avec succès" },
                 ["job_deleted"] = new() { [Language.English] = "Backup job deleted", [Language.French] = "Travail supprimé" },
                 ["job_executed"] = new() { [Language.English] = "Backup completed", [Language.French] = "Sauvegarde terminée" },
                 ["language_changed"] = new() { [Language.English] = "Language changed", [Language.French] = "Langue changée" },
+                ["press_any_key"] = new() { [Language.English] = "Press any key...", [Language.French] = "Appuyez sur une touche..." },
 
                 // Messages erreur
                 ["error_max_jobs"] = new() { [Language.English] = "Error: Maximum 5 jobs allowed", [Language.French] = "Erreur : Maximum 5 travaux autorisés" },

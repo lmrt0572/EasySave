@@ -1,4 +1,5 @@
 ﻿using EasySave.Core.Models;
+using EasySave.Core.Services;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -8,6 +9,6 @@ namespace EasySave.Core.Strategies
     // ===== BACKUP STRATEGY INTERFACE =====
     public interface IBackupStrategy
     {
-        void Execute(BackupJob job, Action<string, string, long, long> onFileCompleted);
+        Task Execute(BackupJob job, IEncryptionService encryptionService, Action<string, string, long, long, int> onFileCompleted);
     }
 }

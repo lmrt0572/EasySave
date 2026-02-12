@@ -1,9 +1,10 @@
 ﻿using EasySave.Core.Models;
 using EasySave.Core.Utils;
+using EasySave.Core.Services;
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Threading.Tasks;
 
 namespace EasySave.Core.Strategies
 {
@@ -11,7 +12,7 @@ namespace EasySave.Core.Strategies
     public class DifferentialBackupStrategy : IBackupStrategy
     {
         // ===== EXECUTION =====
-        public void Execute(BackupJob job, Action<string, string, long, long> onFileCompleted)
+        public async Task Execute(BackupJob job, IEncryptionService encryptionService, Action<string, string, long, long, int> onFileCompleted)
         {
             if (!FileUtils.DirectoryExists(job.SourceDirectory))
             {
@@ -31,22 +32,25 @@ namespace EasySave.Core.Strategies
                 }
 
                 var stopwatch = Stopwatch.StartNew();
+                int cryptTime = 0;
 
                 try
                 {
                     FileUtils.CopyFile(sourceFile, targetFile);
                     stopwatch.Stop();
 
-                    long size = FileUtils.GetFileSize(sourceFile);
+                    if (encryptionService.IsExtensionTargeted(targetFile))
+                    {
+                        cryptTime = await encryptionService.EncryptAsync(targetFile);
+                    }
 
-                    onFileCompleted(sourceFile, targetFile, size, stopwatch.ElapsedMilliseconds);
+                    long size = FileUtils.GetFileSize(sourceFile);
+                    onFileCompleted(sourceFile, targetFile, size, stopwatch.ElapsedMilliseconds, cryptTime);
                 }
                 catch (Exception)
                 {
-                    stopwatch.Stop();
-
-                    onFileCompleted(sourceFile, targetFile, 0, -1);
-
+                    if (stopwatch.IsRunning) stopwatch.Stop();
+                    onFileCompleted(sourceFile, targetFile, 0, -1, -1);
                     throw;
                 }
             }
