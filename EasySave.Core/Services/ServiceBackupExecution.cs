@@ -54,6 +54,9 @@ namespace EasySave.Core.Services
                 Console.ForegroundColor = ConsoleColor.Yellow;
                 Console.WriteLine($"\n  [STOP] Business software detected: {businessSoftwareName}. Backup aborted.");
                 Console.ResetColor();
+
+                // #15 - Log the stop event with EventType
+                LogBusinessSoftwareEvent(job.Name, businessSoftwareName);
                 return;
             }
 
@@ -125,21 +128,44 @@ namespace EasySave.Core.Services
             }
             catch (OperationCanceledException)
             {
-                // 3. Handling the safety stop (Colleague's Logic for state status)
+                // #14 - Set Stopped status (not Error)
                 state.Status = BackupStatus.Stopped;
                 state.Timestamp = DateTime.Now;
                 _stateService.UpdateJobState(state);
                 StateUpdated?.Invoke(state);
 
+                // #15 - Log the stop event with EventType and EventDetails
+                LogBusinessSoftwareEvent(job.Name, businessSoftwareName);
+
                 Console.WriteLine();
                 Console.ForegroundColor = ConsoleColor.Yellow;
                 Console.WriteLine($"  ⚠ {job.Name} stopped (software detected or user cancellation)");
                 Console.ResetColor();
+
+                // Re-throw so caller (WpfViewModel) can handle it too
+                throw;
             }
             finally
             {
                 _logService.Flush();
             }
+        }
+
+        // ===== BUSINESS SOFTWARE LOGGING (#15) =====
+        private void LogBusinessSoftwareEvent(string jobName, string processName)
+        {
+            _logService.Write(new ModelLogEntry
+            {
+                Timestamp = DateTime.Now,
+                JobName = jobName,
+                EventType = "Business Software Detected",
+                EventDetails = $"Process: {processName}",
+                SourcePath = string.Empty,
+                TargetPath = string.Empty,
+                FileSize = 0,
+                TransferTimeMs = 0,
+                EncryptionTimeMs = 0
+            });
         }
 
         // ===== PROGRESS BAR =====

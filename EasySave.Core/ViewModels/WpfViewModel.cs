@@ -20,8 +20,10 @@ namespace EasySave.Core.ViewModels
 {
     // ===== WPF VIEW MODEL (V2.0) =====
     // Differences from MainViewModel (V1.0/1.1):
-    //   - No MaxJobs limit 
-    //   - Business software detection 
+    //   - No MaxJobs limit (#6)
+    //   - Business software detection (#12, #13, #14, #15)
+    //   - CryptoSoft settings exposed for GUI (#8, #9, #10)
+    //   - INotifyPropertyChanged for WPF data binding
     //   - Observable collections for UI reactivity
     public class WpfViewModel : INotifyPropertyChanged, IDisposable
     {
@@ -82,6 +84,37 @@ namespace EasySave.Core.ViewModels
             }
         }
 
+        // ===== CRYPTOSOFT SETTINGS (Bastien #8, #9, #10) =====
+
+        public string EncryptionKey
+        {
+            get => _encryptionKey;
+            set
+            {
+                _encryptionKey = value;
+                UpdateEncryptionService();
+                SaveConfig();
+                OnPropertyChanged();
+            }
+        }
+
+        public string EncryptionExtensionsText
+        {
+            get => string.Join(", ", _encryptionExtensions);
+            set
+            {
+                _encryptionExtensions = value
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(e => e.Trim())
+                    .Where(e => !string.IsNullOrEmpty(e))
+                    .Select(e => e.StartsWith('.') ? e : "." + e)
+                    .ToList();
+                UpdateEncryptionService();
+                SaveConfig();
+                OnPropertyChanged();
+            }
+        }
+
         // ===== CONSTRUCTOR =====
         public WpfViewModel(LanguageManager languageManager)
         {
@@ -101,7 +134,7 @@ namespace EasySave.Core.ViewModels
             UpdateEncryptionService();
             RefreshObservableJobs();
 
-            // --- Business software monitor  ---
+            // --- Business software monitor (#12) ---
             _monitor = BusinessSoftwareMonitor.Instance;
             _monitor.ProcessName = _businessSoftwareName;
             _monitor.DetectionChanged += OnBusinessSoftwareDetectionChanged;
@@ -117,13 +150,13 @@ namespace EasySave.Core.ViewModels
             OnPropertyChanged(nameof(Jobs));
         }
 
-        // ===== JOB MANAGEMENT =====
+        // ===== JOB MANAGEMENT (NO MAX LIMIT - #6) =====
 
         public int GetJobCount() => _jobs.Count;
 
         public bool CreateJob(string name, string source, string target, int typeInput)
         {
-            //  NO MaxJobs validation
+            // #6 - NO MaxJobs validation
 
             if (string.IsNullOrWhiteSpace(name))
                 return false;
@@ -170,13 +203,13 @@ namespace EasySave.Core.ViewModels
             return true;
         }
 
-        // ===== EXECUTION WITH BUSINESS SOFTWARE CHECK  =====
+        // ===== EXECUTION WITH BUSINESS SOFTWARE CHECK (#13, #14) =====
 
         public async Task ExecuteJob(BackupJob job)
         {
             if (job == null) return;
 
-            //  Block if business software detected
+            // #13 - Block if business software detected
             if (_monitor.CheckNow())
             {
                 IsBusinessSoftwareDetected = true;
@@ -194,9 +227,8 @@ namespace EasySave.Core.ViewModels
             }
             catch (OperationCanceledException)
             {
-                //  Job was stopped by business software detection
+                // #14 - Job was stopped by business software detection
                 StatusMessage = _languageManager.GetText("job_stopped_business_software");
-                LogBusinessSoftwareStop(job.Name);
             }
             catch (Exception ex)
             {
@@ -212,7 +244,7 @@ namespace EasySave.Core.ViewModels
 
         public async Task ExecuteAllJobs()
         {
-            // Block if business software detected
+            // #13 - Block if business software detected
             if (_monitor.CheckNow())
             {
                 IsBusinessSoftwareDetected = true;
@@ -227,11 +259,10 @@ namespace EasySave.Core.ViewModels
             {
                 foreach (var job in _jobs.ToList())
                 {
-                    // Re-check before each job
+                    // #13 - Re-check before each job
                     if (_monitor.CheckNow())
                     {
                         StatusMessage = _languageManager.GetText("error_business_software");
-                        LogBusinessSoftwareStop(job.Name);
                         break;
                     }
 
@@ -269,7 +300,7 @@ namespace EasySave.Core.ViewModels
             var logService = LogService.Instance;
             var execution = new ServiceBackupExecution(strategy, logService, _stateService, _encryptionService);
 
-            // --- Execute with business software name and cancellation token ---
+            // --- Execute (ServiceBackupExecution handles logging + re-throws on cancel) ---
             await execution.Execute(job, _businessSoftwareName, token);
         }
 
@@ -292,6 +323,7 @@ namespace EasySave.Core.ViewModels
             if (detected)
             {
                 StatusMessage = _languageManager.GetText("error_business_software");
+                // #14 - If executing, cancel after current file
                 _currentCts?.Cancel();
             }
             else
@@ -300,27 +332,9 @@ namespace EasySave.Core.ViewModels
             }
         }
 
-        // ===== LOGGING (#15) =====
-
-        private void LogBusinessSoftwareStop(string jobName)
-        {
-            var logService = LogService.Instance;
-            logService.Write(new ModelLogEntry
-            {
-                Timestamp = DateTime.Now,
-                JobName = jobName,
-                EventType = "Business Software Detected",
-                EventDetails = $"Process: {_businessSoftwareName}",
-                SourcePath = string.Empty,
-                TargetPath = string.Empty,
-                FileSize = 0,
-                TransferTimeMs = 0,
-                EncryptionTimeMs = 0
-            });
-            logService.Flush();
-        }
-
         // ===== PERSISTENCE =====
+        // USES THE SAME AppConfigDto FORMAT AS MainViewModel
+        // Both Console and WPF read/write the same config.json structure
 
         private void LoadConfig()
         {
@@ -398,7 +412,7 @@ namespace EasySave.Core.ViewModels
             _currentCts?.Dispose();
         }
 
-        // ===== DTO =====
+        // ===== DTO (SAME STRUCTURE AS MainViewModel) =====
         private class AppConfigDto
         {
             public string? EncryptionKey { get; set; }

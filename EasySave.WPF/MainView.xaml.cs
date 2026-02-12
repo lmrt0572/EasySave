@@ -51,6 +51,11 @@ namespace EasySave.WPF
                 });
             };
 
+            // --- Load initial values from ViewModel into UI ---
+            TxtBusinessSoftware.Text = _viewModel.BusinessSoftwareName;
+            TxtEncryptionKey.Text = _viewModel.EncryptionKey;
+            TxtEncryptionExtensions.Text = _viewModel.EncryptionExtensionsText;
+
             // Initial UI refresh
             RefreshJobList();
             UpdateBusinessSoftwareWarning();
@@ -339,6 +344,24 @@ namespace EasySave.WPF
             if (_viewModel != null)
             {
                 _viewModel.BusinessSoftwareName = TxtBusinessSoftware.Text.Trim();
+            }
+        }
+
+        // ===== CRYPTOSOFT SETTINGS =====
+
+        private void TxtEncryptionKey_LostFocus(object sender, RoutedEventArgs e)
+        {
+            if (_viewModel != null && !string.IsNullOrWhiteSpace(TxtEncryptionKey.Text))
+            {
+                _viewModel.EncryptionKey = TxtEncryptionKey.Text.Trim();
+            }
+        }
+
+        private void TxtEncryptionExtensions_LostFocus(object sender, RoutedEventArgs e)
+        {
+            if (_viewModel != null && !string.IsNullOrWhiteSpace(TxtEncryptionExtensions.Text))
+            {
+                _viewModel.EncryptionExtensionsText = TxtEncryptionExtensions.Text.Trim();
             }
         }
 

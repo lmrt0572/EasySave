@@ -4,11 +4,11 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Title="EasySave 2.0" Height="700" Width="1000"
-        MinHeight="500" MinWidth="750"
+        Title="EasySave 2.0" Height="750" Width="1000"
+        MinHeight="550" MinWidth="750"
         WindowStartupLocation="CenterScreen"
         Background="#1E1E2E">
-    
+
     <Window.Resources>
         <Style x:Key="CardStyle" TargetType="Border">
             <Setter Property="Background" Value="#2A2A3C"/>
@@ -16,7 +16,7 @@
             <Setter Property="Padding" Value="16"/>
             <Setter Property="Margin" Value="4"/>
         </Style>
-        
+
         <Style x:Key="PrimaryButton" TargetType="Button">
             <Setter Property="Background" Value="#7C3AED"/>
             <Setter Property="Foreground" Value="White"/>
@@ -91,7 +91,7 @@
                 </Setter.Value>
             </Setter>
         </Style>
-        
+
         <Style x:Key="InputStyle" TargetType="TextBox">
             <Setter Property="Background" Value="#1E1E2E"/>
             <Setter Property="Foreground" Value="#E0E0E0"/>
@@ -101,7 +101,7 @@
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="CaretBrush" Value="White"/>
         </Style>
-        
+
         <Style x:Key="LabelStyle" TargetType="TextBlock">
             <Setter Property="Foreground" Value="#A0A0B8"/>
             <Setter Property="FontSize" Value="12"/>
@@ -128,7 +128,7 @@
 
             <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                 <TextBlock Text="EasySave 2.0" FontSize="24" FontWeight="Bold" Foreground="White" Margin="0,0,16,0"/>
-                
+
                 <Border x:Name="WarningBanner" Background="#7F1D1D" CornerRadius="6" 
                         Padding="12,6" Visibility="Collapsed" VerticalAlignment="Center">
                     <TextBlock x:Name="WarningText" Foreground="#FCA5A5" FontSize="12" FontWeight="SemiBold"
@@ -143,7 +143,7 @@
                         Padding="12,6" Click="BtnLangFr_Click"/>
             </StackPanel>
         </Grid>
-        
+
         <!-- ===== CREATE JOB PANEL ===== -->
         <Border Grid.Row="1" Style="{StaticResource CardStyle}" Margin="0,0,0,8">
             <Grid>
@@ -158,21 +158,21 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
-                
+
                 <TextBlock Grid.Column="0" Grid.Row="0" Style="{StaticResource LabelStyle}" x:Name="LblName" Text="Name"/>
                 <TextBlock Grid.Column="1" Grid.Row="0" Style="{StaticResource LabelStyle}" x:Name="LblSource" Text="Source Directory" Margin="8,0,0,4"/>
                 <TextBlock Grid.Column="2" Grid.Row="0" Style="{StaticResource LabelStyle}" x:Name="LblTarget" Text="Target Directory" Margin="8,0,0,4"/>
-                
+
                 <TextBox Grid.Column="0" Grid.Row="1" x:Name="TxtName" Style="{StaticResource InputStyle}"/>
                 <TextBox Grid.Column="1" Grid.Row="1" x:Name="TxtSource" Style="{StaticResource InputStyle}" Margin="8,0,0,0"/>
                 <TextBox Grid.Column="2" Grid.Row="1" x:Name="TxtTarget" Style="{StaticResource InputStyle}" Margin="8,0,0,0"/>
-                
+
                 <ComboBox Grid.Column="3" Grid.Row="1" x:Name="CmbType" Width="120" Margin="8,0,0,0"
                           Background="#1E1E2E" Foreground="Black" FontSize="13" VerticalContentAlignment="Center">
                     <ComboBoxItem Content="Full" IsSelected="True"/>
                     <ComboBoxItem Content="Differential"/>
                 </ComboBox>
-                
+
                 <Button Grid.Column="4" Grid.Row="1" x:Name="BtnCreate" Content="+ Create" 
                         Style="{StaticResource SuccessButton}" Margin="8,0,0,0"
                         Click="BtnCreate_Click"/>
@@ -229,17 +229,47 @@
             </StackPanel>
         </Border>
 
-        <!-- ===== SETTINGS ===== -->
+        <!-- ===== SETTINGS (Business Software + CryptoSoft) ===== -->
         <Border Grid.Row="4" Style="{StaticResource CardStyle}" Margin="0,0,0,8">
-            <StackPanel Orientation="Horizontal">
-                <TextBlock x:Name="LblSettings" Text="Business software process:" 
-                           Foreground="#A0A0B8" FontSize="13" VerticalAlignment="Center" Margin="0,0,12,0"/>
-                <TextBox x:Name="TxtBusinessSoftware" Style="{StaticResource InputStyle}" 
-                         Width="200" Text="CalculatorApp"
-                         TextChanged="TxtBusinessSoftware_TextChanged"/>
-                <TextBlock x:Name="LblMonitorStatus" Text="" Foreground="#059669" FontSize="12"
-                           VerticalAlignment="Center" Margin="12,0,0,0"/>
-            </StackPanel>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="8"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Business Software Settings -->
+                <StackPanel Grid.Row="0" Orientation="Horizontal">
+                    <TextBlock x:Name="LblSettings" Text="Business software process:" 
+                               Foreground="#A0A0B8" FontSize="13" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                    <TextBox x:Name="TxtBusinessSoftware" Style="{StaticResource InputStyle}" 
+                             Width="200" Text="CalculatorApp"
+                             TextChanged="TxtBusinessSoftware_TextChanged"/>
+                    <TextBlock x:Name="LblMonitorStatus" Text="" Foreground="#059669" FontSize="12"
+                               VerticalAlignment="Center" Margin="12,0,0,0"/>
+                </StackPanel>
+
+                <!-- CryptoSoft Settings -->
+                <StackPanel Grid.Row="2" Orientation="Horizontal">
+                    <!-- Encryption Key -->
+                    <TextBlock Text="🔐" FontSize="14" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <TextBlock x:Name="LblEncryptionKey" Text="Encryption key:" 
+                               Foreground="#A0A0B8" FontSize="13" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBox x:Name="TxtEncryptionKey" Style="{StaticResource InputStyle}" 
+                             Width="150" Text="Prosoft123"
+                             LostFocus="TxtEncryptionKey_LostFocus"/>
+
+                    <!-- Separator -->
+                    <Border Width="1" Background="#444" Margin="16,2,16,2"/>
+
+                    <!-- Encryption Extensions -->
+                    <TextBlock x:Name="LblEncryptionExtensions" Text="Extensions:" 
+                               Foreground="#A0A0B8" FontSize="13" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBox x:Name="TxtEncryptionExtensions" Style="{StaticResource InputStyle}" 
+                             Width="200" Text=".txt, .md, .pdf"
+                             LostFocus="TxtEncryptionExtensions_LostFocus"/>
+                </StackPanel>
+            </Grid>
         </Border>
 
         <!-- ===== STATUS BAR ===== -->
