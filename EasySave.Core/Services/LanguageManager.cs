@@ -56,6 +56,7 @@ namespace EasySave.Core.Models.Enums
                 ["status_inactive"] = new() { [Language.English] = "Inactive", [Language.French] = "Inactif" },
                 ["status_completed"] = new() { [Language.English] = "Completed", [Language.French] = "Terminé" },
                 ["status_error"] = new() { [Language.English] = "Error", [Language.French] = "Erreur" },
+                ["status_stopped"] = new() { [Language.English] = "Stopped", [Language.French] = "Arrêté" },
 
                 // Progress
                 ["progress_files"] = new() { [Language.English] = "Files: {0}/{1}", [Language.French] = "Fichiers : {0}/{1}" },
@@ -71,7 +72,47 @@ namespace EasySave.Core.Models.Enums
                 ["job_name"] = new() { [Language.English] = "Name: ", [Language.French] = "Nom : " },
                 ["job_source"] = new() { [Language.English] = "Source: ", [Language.French] = "Source : " },
                 ["job_target"] = new() { [Language.English] = "Target: ", [Language.French] = "Cible : " },
-                ["job_type"] = new() { [Language.English] = "Type: ", [Language.French] = "Type : " }
+                ["job_type"] = new() { [Language.English] = "Type: ", [Language.French] = "Type : " },
+
+                // ===== V2.0 - Business Software Detection =====
+                ["error_business_software"] = new()
+                {
+                    [Language.English] = "⚠ Business software detected! Backup execution is blocked.",
+                    [Language.French] = "⚠ Logiciel métier détecté ! L'exécution des sauvegardes est bloquée."
+                },
+                ["business_software_cleared"] = new()
+                {
+                    [Language.English] = "✓ Business software no longer detected. Backups can resume.",
+                    [Language.French] = "✓ Logiciel métier non détecté. Les sauvegardes peuvent reprendre."
+                },
+                ["job_stopped_business_software"] = new()
+                {
+                    [Language.English] = "Backup stopped: business software was detected during execution.",
+                    [Language.French] = "Sauvegarde arrêtée : logiciel métier détecté pendant l'exécution."
+                },
+                ["settings_title"] = new()
+                {
+                    [Language.English] = "Settings",
+                    [Language.French] = "Paramètres"
+                },
+                ["settings_business_software"] = new()
+                {
+                    [Language.English] = "Business software process name:",
+                    [Language.French] = "Nom du processus du logiciel métier :"
+                },
+                ["wpf_title"] = new()
+                {
+                    [Language.English] = "EasySave 2.0",
+                    [Language.French] = "EasySave 2.0"
+                },
+                ["btn_create"] = new() { [Language.English] = "Create Job", [Language.French] = "Créer" },
+                ["btn_delete"] = new() { [Language.English] = "Delete", [Language.French] = "Supprimer" },
+                ["btn_execute"] = new() { [Language.English] = "Execute", [Language.French] = "Exécuter" },
+                ["btn_execute_all"] = new() { [Language.English] = "Execute All", [Language.French] = "Tout exécuter" },
+                ["col_name"] = new() { [Language.English] = "Name", [Language.French] = "Nom" },
+                ["col_source"] = new() { [Language.English] = "Source", [Language.French] = "Source" },
+                ["col_target"] = new() { [Language.English] = "Target", [Language.French] = "Cible" },
+                ["col_type"] = new() { [Language.English] = "Type", [Language.French] = "Type" }
             };
         }
 

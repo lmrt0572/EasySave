@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -10,7 +10,7 @@ namespace EasySave.Core.Models.Enums
         Inactive,
         Active,
         Completed,
-        Error
+        Error,
+        Stopped // V2.0 - Stopped by business software detection
     }
 }
-

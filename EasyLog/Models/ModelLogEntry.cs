@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -20,5 +20,11 @@ namespace EasyLog.Models
         public long FileSize { get; set; }
 
         public long TransferTimeMs { get; set; }
+
+        // V2.0 - Event type for special log entries (e.g. "Business Software Detected")
+        public string? EventType { get; set; }
+
+        // V2.0 - Additional info (e.g. detected process name)
+        public string? EventDetails { get; set; }
     }
 }
