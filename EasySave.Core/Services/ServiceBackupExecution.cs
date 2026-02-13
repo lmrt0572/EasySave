@@ -3,11 +3,14 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using EasyLog.Models;
 using EasyLog.Services;
 using EasySave.Core.Models;
 using EasySave.Core.Models.Enums;
 using EasySave.Core.Strategies;
+using EasySave.Core.Utils;
 
 namespace EasySave.Core.Services
 {
@@ -17,6 +20,7 @@ namespace EasySave.Core.Services
         private readonly IBackupStrategy _strategy;
         private readonly ILogService _logService;
         private readonly IStateService _stateService;
+        private readonly IEncryptionService _encryptionService;
         private int _totalFiles;
         private int _completedFiles;
         private string _currentFile = "";
@@ -25,16 +29,37 @@ namespace EasySave.Core.Services
         public event Action<BackupJobState>? StateUpdated;
 
         // ===== CONSTRUCTOR =====
-        public ServiceBackupExecution(IBackupStrategy strategy, ILogService logService, IStateService stateService)
+        public ServiceBackupExecution(IBackupStrategy strategy, ILogService logService, IStateService stateService, IEncryptionService encryptionService)
         {
-            _strategy = strategy;
-            _logService = logService;
-            _stateService = stateService;
+            _strategy = strategy ?? throw new ArgumentNullException(nameof(strategy));
+            _logService = logService ?? throw new ArgumentNullException(nameof(logService));
+            _stateService = stateService ?? throw new ArgumentNullException(nameof(stateService));
+            _encryptionService = encryptionService ?? throw new ArgumentNullException(nameof(encryptionService));
         }
 
         // ===== PUBLIC METHODS =====
-        public void Execute(BackupJob job)
+
+        /// <summary>Execute backup (Overload for CLI/Console compatibility)</summary>
+        public async Task Execute(BackupJob job, string businessSoftwareName)
         {
+            await Execute(job, businessSoftwareName, CancellationToken.None);
+        }
+
+        /// <summary>Main Execute method with Business Software detection and CancellationToken support</summary>
+        public async Task Execute(BackupJob job, string businessSoftwareName, CancellationToken cancellationToken)
+        {
+            // 1. Initial check: Stop before starting if software is already running
+            if (FileUtils.IsProcessRunning(businessSoftwareName))
+            {
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine($"\n  [STOP] Business software detected: {businessSoftwareName}. Backup aborted.");
+                Console.ResetColor();
+
+                // #15 - Log the stop event with EventType
+                LogBusinessSoftwareEvent(job.Name, businessSoftwareName);
+                return;
+            }
+
             // --- Initialization & Pre-Scan ---
             var state = new BackupJobState(job.Name);
             var files = Directory.GetFiles(job.SourceDirectory, "*", SearchOption.AllDirectories);
@@ -52,46 +77,95 @@ namespace EasySave.Core.Services
             DisplayProgressBar(job.Name);
 
             // --- Strategy Execution Loop ---
-            _strategy.Execute(job, (source, target, size, timeMs) =>
+            try
             {
-                _currentFile = source;
-                _completedFiles++;
-
-                DisplayProgressBar(job.Name);
-
-                // --- Real-Time State Update ---
-                if (timeMs < 0)
+                await _strategy.Execute(job, _encryptionService, (source, target, size, timeMs, cryptTime) =>
                 {
-                    state.SetError();
-                }
-                else
-                {
-                    state.UpdateCurrentFile(source, target);
-                    state.CompleteFile(size);
-                }
+                    // 2. Live Check: Business software opened OR GUI cancellation requested
+                    if (FileUtils.IsProcessRunning(businessSoftwareName) || cancellationToken.IsCancellationRequested)
+                    {
+                        throw new OperationCanceledException($"[ABORT] Backup interrupted for {job.Name}.");
+                    }
 
+                    _currentFile = source;
+                    _completedFiles++;
+
+                    DisplayProgressBar(job.Name);
+
+                    // --- Real-Time State Update ---
+                    if (timeMs < 0)
+                    {
+                        state.SetError();
+                    }
+                    else
+                    {
+                        state.UpdateCurrentFile(source, target);
+                        state.CompleteFile(size);
+                    }
+
+                    _stateService.UpdateJobState(state);
+                    StateUpdated?.Invoke(state);
+
+                    // --- Activity Logging ---
+                    _logService.Write(new ModelLogEntry
+                    {
+                        Timestamp = DateTime.Now,
+                        JobName = job.Name,
+                        SourcePath = source,
+                        TargetPath = target,
+                        FileSize = size,
+                        TransferTimeMs = timeMs,
+                        EncryptionTimeMs = cryptTime
+                    });
+                });
+
+                // --- Normal Job Finalization ---
+                state.Finish();
                 _stateService.UpdateJobState(state);
                 StateUpdated?.Invoke(state);
 
-                // --- Activity Logging ---
-                _logService.Write(new ModelLogEntry
-                {
-                    Timestamp = DateTime.Now,
-                    JobName = job.Name,
-                    SourcePath = source,
-                    TargetPath = target,
-                    FileSize = size,
-                    TransferTimeMs = timeMs
-                });
+                DisplayProgressComplete(job.Name);
+            }
+            catch (OperationCanceledException)
+            {
+                // #14 - Set Stopped status (not Error)
+                state.Status = BackupStatus.Stopped;
+                state.Timestamp = DateTime.Now;
+                _stateService.UpdateJobState(state);
+                StateUpdated?.Invoke(state);
+
+                // #15 - Log the stop event with EventType and EventDetails
+                LogBusinessSoftwareEvent(job.Name, businessSoftwareName);
+
+                Console.WriteLine();
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine($"  ⚠ {job.Name} stopped (software detected or user cancellation)");
+                Console.ResetColor();
+
+                // Re-throw so caller (WpfViewModel) can handle it too
+                throw;
+            }
+            finally
+            {
+                _logService.Flush();
+            }
+        }
+
+        // ===== BUSINESS SOFTWARE LOGGING (#15) =====
+        private void LogBusinessSoftwareEvent(string jobName, string processName)
+        {
+            _logService.Write(new ModelLogEntry
+            {
+                Timestamp = DateTime.Now,
+                JobName = jobName,
+                EventType = "Business Software Detected",
+                EventDetails = $"Process: {processName}",
+                SourcePath = string.Empty,
+                TargetPath = string.Empty,
+                FileSize = 0,
+                TransferTimeMs = 0,
+                EncryptionTimeMs = 0
             });
-
-            // --- Job Finalization ---
-            state.Finish();
-            _stateService.UpdateJobState(state);
-            StateUpdated?.Invoke(state);
-
-            DisplayProgressComplete(job.Name);
-            _logService.Flush();
         }
 
         // ===== PROGRESS BAR =====

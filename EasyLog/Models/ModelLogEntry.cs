@@ -28,5 +28,11 @@ namespace EasyLog.Models
 
         [XmlElement("TransferTimeMs")]
         public long TransferTimeMs { get; set; }
+
+        public string? EventType { get; set; }
+
+        public string? EventDetails { get; set; }
+      
+        public int EncryptionTimeMs { get; set; }
     }
 }
