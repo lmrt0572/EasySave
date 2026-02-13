@@ -349,7 +349,7 @@ namespace EasySave.WPF
 
         // ===== CRYPTOSOFT SETTINGS =====
 
-        private void TxtEncryptionKey_LostFocus(object sender, RoutedEventArgs e)
+        private void TxtEncryptionKey_TextChanged(object sender, RoutedEventArgs e)
         {
             if (_viewModel != null)
             {
@@ -357,7 +357,7 @@ namespace EasySave.WPF
             }
         }
 
-        private void TxtEncryptionExtensions_LostFocus(object sender, RoutedEventArgs e)
+        private void TxtEncryptionExtensions_TextChanged(object sender, RoutedEventArgs e)
         {
             if (_viewModel != null)
             {

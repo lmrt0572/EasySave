@@ -257,7 +257,7 @@
                                Foreground="#A0A0B8" FontSize="13" VerticalAlignment="Center" Margin="0,0,8,0"/>
                     <TextBox x:Name="TxtEncryptionKey" Style="{StaticResource InputStyle}" 
                              Width="150" Text="Prosoft123"
-                             LostFocus="TxtEncryptionKey_LostFocus"/>
+                             TextChanged="TxtEncryptionKey_TextChanged"/>
 
                     <!-- Separator -->
                     <Border Width="1" Background="#444" Margin="16,2,16,2"/>
@@ -267,7 +267,7 @@
                                Foreground="#A0A0B8" FontSize="13" VerticalAlignment="Center" Margin="0,0,8,0"/>
                     <TextBox x:Name="TxtEncryptionExtensions" Style="{StaticResource InputStyle}" 
                              Width="200" Text=".txt, .md, .pdf"
-                             LostFocus="TxtEncryptionExtensions_LostFocus"/>
+                             TextChanged="TxtEncryptionExtensions_TextChanged"/>
                 </StackPanel>
             </Grid>
         </Border>
