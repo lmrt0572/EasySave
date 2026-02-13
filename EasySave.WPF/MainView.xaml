@@ -4,90 +4,29 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Title="EasySave" Height="720" Width="1050"
-        MinHeight="550" MinWidth="800"
+        Title="EasySave" Height="720" Width="1100"
+        MinHeight="600" MinWidth="900"
         WindowStartupLocation="CenterScreen"
+        x:Name="RootWindow"
         Background="#FAF6F1">
 
-    <!-- 
-    ╔══════════════════════════════════════════════════════════════╗
-    ║  CHARTE GRAPHIQUE — THÈME "CLAUDE" (Beige / Brun chaud)    ║
-    ╠══════════════════════════════════════════════════════════════╣
-    ║  Fond principal :  #FAF6F1  (beige très clair)              ║
-    ║  Cartes :          #FFFFFF  (blanc pur)                     ║
-    ║  Texte principal : #3D2B1F  (brun foncé)                   ║
-    ║  Texte secondaire: #8B7355  (brun moyen)                   ║
-    ║  Accent primaire : #6B4C3B  (brun chaud / marron)          ║
-    ║  Accent hover :    #8B6914  (brun doré)                    ║
-    ║  Bordures :        #E8DFD4  (beige moyen)                  ║
-    ║  Danger :          #9B2C2C  (rouge bordeaux)                ║
-    ║  Succès :          #5A7247  (vert olive)                    ║
-    ║  Alerte :          #C53030  (rouge vif)                     ║
-    ║  Progression :     #6B4C3B → #A68B5B  (dégradé brun)       ║
-    ╚══════════════════════════════════════════════════════════════╝
-    
-    POUR TESTER D'AUTRES THÈMES, remplacer les couleurs ci-dessous :
-    
-    ── Bleu foncé / Clair ──
-      Fond :         #F0F4F8    Cartes : #FFFFFF
-      Texte :        #1A2332    Secondaire : #5A7184
-      Accent :       #1E3A5F    Hover : #2B5A8C
-      Bordures :     #D1DCE8    Danger : #9B2C2C
-      Progression :  #1E3A5F → #4A90D9
-      
-    ── Bordeaux / Gris foncé ──
-      Fond :         #F5F0F0    Cartes : #FFFFFF
-      Texte :        #2D2D2D    Secondaire : #6B6B6B
-      Accent :       #6B2D3E    Hover : #8B3D52
-      Bordures :     #E0D5D5    Danger : #9B2C2C
-      Progression :  #6B2D3E → #A65D6F
-      
-    ── Vert sauge / Crème ──
-      Fond :         #F5F7F2    Cartes : #FFFFFF
-      Texte :        #2D3B2D    Secondaire : #6B7B6B
-      Accent :       #4A6741    Hover : #5A8050
-      Bordures :     #D5E0D2    Danger : #9B2C2C
-      Progression :  #4A6741 → #7BA36E
-      
-    ── Ardoise / Ambre ──
-      Fond :         #F8F7F5    Cartes : #FFFFFF
-      Texte :        #2D2D30    Secondaire : #6B6B70
-      Accent :       #B8860B    Hover : #D4A017
-      Bordures :     #E0DFDD    Danger : #9B2C2C
-      Progression :  #B8860B → #DAA520
-    -->
-
     <Window.Resources>
-        <!-- Card container -->
-        <Style x:Key="Card" TargetType="Border">
-            <Setter Property="Background" Value="White"/>
-            <Setter Property="CornerRadius" Value="10"/>
-            <Setter Property="Padding" Value="20"/>
-            <Setter Property="Margin" Value="0,0,0,12"/>
-            <Setter Property="BorderBrush" Value="#E8DFD4"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Effect">
-                <Setter.Value>
-                    <DropShadowEffect BlurRadius="8" ShadowDepth="2" Opacity="0.06" Color="#3D2B1F"/>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <!-- Primary Button (brown) -->
+        <!-- ═══ BUTTONS ═══ -->
         <Style x:Key="BtnPrimary" TargetType="Button">
             <Setter Property="Background" Value="#6B4C3B"/>
             <Setter Property="Foreground" Value="White"/>
-            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontSize" Value="12.5"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="FontFamily" Value="Segoe UI"/>
-            <Setter Property="Padding" Value="20,10"/>
+            <Setter Property="Padding" Value="18,10"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Border x:Name="bd" Background="{TemplateBinding Background}" 
-                                CornerRadius="8" Padding="{TemplateBinding Padding}">
+                                CornerRadius="6" Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
@@ -96,7 +35,7 @@
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="bd" Property="Background" Value="#C4B5A5"/>
-                                <Setter Property="Foreground" Value="#EEE"/>
+                                <Setter Property="Foreground" Value="#E8E0D6"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -104,23 +43,25 @@
             </Setter>
         </Style>
 
-        <!-- Danger Button (bordeaux) -->
         <Style x:Key="BtnDanger" TargetType="Button" BasedOn="{StaticResource BtnPrimary}">
-            <Setter Property="Background" Value="#9B2C2C"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#9B2C2C"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Border x:Name="bd" Background="{TemplateBinding Background}" 
-                                CornerRadius="8" Padding="{TemplateBinding Padding}">
+                                CornerRadius="6" Padding="{TemplateBinding Padding}"
+                                BorderBrush="#D4A0A0" BorderThickness="1">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="#B83A3A"/>
+                                <Setter TargetName="bd" Property="Background" Value="#FDF2F2"/>
+                                <Setter TargetName="bd" Property="BorderBrush" Value="#9B2C2C"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
-                                <Setter TargetName="bd" Property="Background" Value="#C4B5A5"/>
-                                <Setter Property="Foreground" Value="#EEE"/>
+                                <Setter TargetName="bd" Property="BorderBrush" Value="#D1C4B2"/>
+                                <Setter Property="Foreground" Value="#C4B5A5"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -128,46 +69,15 @@
             </Setter>
         </Style>
 
-        <!-- Outline Button (ghost) -->
-        <Style x:Key="BtnOutline" TargetType="Button">
+        <Style x:Key="BtnGhost" TargetType="Button" BasedOn="{StaticResource BtnPrimary}">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Foreground" Value="#6B4C3B"/>
-            <Setter Property="FontSize" Value="13"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="FontFamily" Value="Segoe UI"/>
-            <Setter Property="Padding" Value="16,8"/>
-            <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Border x:Name="bd" Background="{TemplateBinding Background}" 
-                                CornerRadius="8" Padding="{TemplateBinding Padding}"
-                                BorderBrush="#D1C4B2" BorderThickness="1.5">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="#F5EDE4"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <!-- Small icon button (row actions) -->
-        <Style x:Key="BtnIcon" TargetType="Button">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="#8B7355"/>
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="Padding" Value="8,4"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="bd" Background="{TemplateBinding Background}" 
-                                CornerRadius="6" Padding="{TemplateBinding Padding}">
+                                CornerRadius="6" Padding="{TemplateBinding Padding}"
+                                BorderBrush="#D1C4B2" BorderThickness="1">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
@@ -180,252 +90,320 @@
             </Setter>
         </Style>
 
-        <!-- Text Input -->
+        <Style x:Key="BtnIcon" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#8B7355"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Width" Value="32"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}" 
+                                CornerRadius="6" Width="{TemplateBinding Width}" Height="{TemplateBinding Height}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#EDE3D6"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="BtnLang" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#A8967E"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="Width" Value="36"/>
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#EDE3D6"/>
+                                <Setter Property="Foreground" Value="#6B4C3B"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ═══ INPUTS ═══ -->
         <Style x:Key="Input" TargetType="TextBox">
-            <Setter Property="Background" Value="#FDFCFA"/>
+            <Setter Property="Background" Value="White"/>
             <Setter Property="Foreground" Value="#3D2B1F"/>
             <Setter Property="BorderBrush" Value="#D1C4B2"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1.5"/>
+            <Setter Property="Padding" Value="4,6"/>
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="FontFamily" Value="Segoe UI"/>
             <Setter Property="CaretBrush" Value="#6B4C3B"/>
         </Style>
+
+        <Style x:Key="InputFull" TargetType="TextBox" BasedOn="{StaticResource Input}">
+            <Setter Property="Background" Value="#FDFCFA"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="10,8"/>
+        </Style>
     </Window.Resources>
 
-    <Grid Margin="24,20">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="260"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
 
-        <!-- ═══ ROW 0: HEADER ═══ -->
-        <Grid Grid.Row="0" Margin="0,0,0,16">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-
-            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                <!-- Logo text -->
-                <TextBlock Text="EasySave" FontSize="26" FontWeight="Bold" Foreground="#3D2B1F" 
-                           FontFamily="Segoe UI" VerticalAlignment="Center"/>
-                <Border Background="#6B4C3B" CornerRadius="4" Padding="6,2" Margin="10,0,0,0" 
-                        VerticalAlignment="Center">
-                    <TextBlock Text="2.0" Foreground="White" FontSize="11" FontWeight="Bold" 
-                               FontFamily="Segoe UI"/>
-                </Border>
-
-                <!-- Warning banner -->
-                <Border x:Name="WarningBanner" Background="#FFF5F5" CornerRadius="8" 
-                        Padding="14,6" Margin="20,0,0,0" Visibility="Collapsed" 
-                        VerticalAlignment="Center" BorderBrush="#FEB2B2" BorderThickness="1">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="⚠" FontSize="13" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                        <TextBlock x:Name="WarningText" Foreground="#9B2C2C" FontSize="12" FontWeight="SemiBold"
-                                   Text="Business software detected" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Border>
-            </StackPanel>
-
-            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                <Button x:Name="BtnLangEn" Content="EN" Style="{StaticResource BtnOutline}" 
-                        Padding="14,6" Margin="0,0,6,0" Click="BtnLangEn_Click"/>
-                <Button x:Name="BtnLangFr" Content="FR" Style="{StaticResource BtnOutline}" 
-                        Padding="14,6" Click="BtnLangFr_Click"/>
-            </StackPanel>
-        </Grid>
-
-        <!-- ═══ ROW 1: CREATE JOB ═══ -->
-        <Border Grid.Row="1" Style="{StaticResource Card}">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="1.2*"/>
-                    <ColumnDefinition Width="1.2*"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-
-                <TextBlock Grid.Column="0" Grid.Row="0" Text="Name" Foreground="#8B7355" 
-                           FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4" FontFamily="Segoe UI"/>
-                <TextBlock Grid.Column="1" Grid.Row="0" Text="Source Directory" Foreground="#8B7355" 
-                           FontSize="11" FontWeight="SemiBold" Margin="10,0,0,4" FontFamily="Segoe UI"/>
-                <TextBlock Grid.Column="2" Grid.Row="0" Text="Target Directory" Foreground="#8B7355" 
-                           FontSize="11" FontWeight="SemiBold" Margin="10,0,0,4" FontFamily="Segoe UI"/>
-
-                <TextBox Grid.Column="0" Grid.Row="1" x:Name="TxtName" Style="{StaticResource Input}"/>
-                <TextBox Grid.Column="1" Grid.Row="1" x:Name="TxtSource" Style="{StaticResource Input}" Margin="10,0,0,0"/>
-                <TextBox Grid.Column="2" Grid.Row="1" x:Name="TxtTarget" Style="{StaticResource Input}" Margin="10,0,0,0"/>
-
-                <ComboBox Grid.Column="3" Grid.Row="1" x:Name="CmbType" Width="120" Margin="10,0,0,0"
-                          Background="#FDFCFA" Foreground="#3D2B1F" FontSize="13" FontFamily="Segoe UI"
-                          VerticalContentAlignment="Center" BorderBrush="#D1C4B2">
-                    <ComboBoxItem Content="Full" IsSelected="True"/>
-                    <ComboBoxItem Content="Differential"/>
-                </ComboBox>
-
-                <Button Grid.Column="4" Grid.Row="1" x:Name="BtnCreate" Content="＋ Create" 
-                        Style="{StaticResource BtnPrimary}" Margin="10,0,0,0"
-                        Click="BtnCreate_Click"/>
-            </Grid>
-        </Border>
-
-        <!-- ═══ ROW 2: PROGRESS BAR ═══ -->
-        <Border Grid.Row="2" x:Name="ProgressPanel" Style="{StaticResource Card}" Visibility="Collapsed">
-            <Grid>
+        <!-- ████ LEFT SIDEBAR ████ -->
+        <Border Grid.Column="0" x:Name="SidebarBorder" Background="White" BorderBrush="#E8DFD4" BorderThickness="0,0,1,0">
+            <Grid Margin="20,24,20,20">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-
-                <!-- Job name + percentage -->
-                <Grid Grid.Row="0" Margin="0,0,0,8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0" Orientation="Horizontal">
-                        <TextBlock x:Name="TxtProgressJob" Text="Backup_1" Foreground="#3D2B1F" 
-                                   FontSize="14" FontWeight="SemiBold" FontFamily="Segoe UI"/>
-                        <TextBlock x:Name="TxtProgressFiles" Text="0 / 0" Foreground="#8B7355" 
-                                   FontSize="12" Margin="12,0,0,0" VerticalAlignment="Center" FontFamily="Segoe UI"/>
-                    </StackPanel>
-                    <TextBlock Grid.Column="1" x:Name="TxtProgressPct" Text="0%" Foreground="#6B4C3B" 
-                               FontSize="16" FontWeight="Bold" FontFamily="Segoe UI"/>
-                </Grid>
-
-                <!-- Progress bar track -->
-                <Border Grid.Row="1" Background="#F0E8DD" CornerRadius="5" Height="10">
-                    <Border x:Name="ProgressFill" Background="#6B4C3B" CornerRadius="5" 
-                            HorizontalAlignment="Left" Width="0"/>
-                </Border>
-
-                <!-- Current file -->
-                <TextBlock Grid.Row="2" x:Name="TxtProgressFile" Text="" Foreground="#A8967E" 
-                           FontSize="11" Margin="0,6,0,0" TextTrimming="CharacterEllipsis" FontFamily="Segoe UI"/>
-            </Grid>
-        </Border>
-
-        <!-- ═══ ROW 3: JOB LIST ═══ -->
-        <Border Grid.Row="3" Style="{StaticResource Card}" Padding="0">
-            <Grid>
-                <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <!-- Column headers -->
-                <Border Grid.Row="0" Background="#FAF6F1" CornerRadius="10,10,0,0" Padding="20,12">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="36"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="1.4*"/>
-                            <ColumnDefinition Width="1.4*"/>
-                            <ColumnDefinition Width="90"/>
-                            <ColumnDefinition Width="90"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="#" Foreground="#A8967E" FontWeight="Bold" 
-                                   FontSize="11" FontFamily="Segoe UI"/>
-                        <TextBlock Grid.Column="1" Text="Name" Foreground="#A8967E" FontWeight="Bold" 
-                                   FontSize="11" FontFamily="Segoe UI"/>
-                        <TextBlock Grid.Column="2" Text="Source" Foreground="#A8967E" FontWeight="Bold" 
-                                   FontSize="11" FontFamily="Segoe UI"/>
-                        <TextBlock Grid.Column="3" Text="Target" Foreground="#A8967E" FontWeight="Bold" 
-                                   FontSize="11" FontFamily="Segoe UI"/>
-                        <TextBlock Grid.Column="4" Text="Type" Foreground="#A8967E" FontWeight="Bold" 
-                                   FontSize="11" FontFamily="Segoe UI"/>
-                        <TextBlock Grid.Column="5" Text="Actions" Foreground="#A8967E" FontWeight="Bold" 
-                                   FontSize="11" FontFamily="Segoe UI" HorizontalAlignment="Center"/>
-                    </Grid>
+                <!-- LOGO -->
+                <StackPanel Grid.Row="0" Margin="0,0,0,28">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="EasySave" FontSize="22" FontWeight="Bold" Foreground="#3D2B1F" 
+                                   FontFamily="Segoe UI" VerticalAlignment="Center" x:Name="TxtLogo"/>
+                        <Border x:Name="BadgeVersion" Background="#6B4C3B" CornerRadius="3" Padding="5,1" 
+                                Margin="8,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="2.0" Foreground="White" FontSize="10" FontWeight="Bold" FontFamily="Segoe UI"/>
+                        </Border>
+                    </StackPanel>
+                    <TextBlock x:Name="TxtSubtitle" Text="Backup management" Foreground="#A8967E" 
+                               FontSize="11" Margin="0,3,0,0" FontFamily="Segoe UI"/>
+                </StackPanel>
+
+                <!-- ACTIONS -->
+                <StackPanel Grid.Row="1" Margin="0,0,0,24">
+                    <TextBlock x:Name="LblActions" Text="ACTIONS" Foreground="#A8967E" FontSize="10" FontWeight="Bold" 
+                               FontFamily="Segoe UI" Margin="0,0,0,8"/>
+                    <Button x:Name="BtnExecuteAll" Content="▶  Execute All" 
+                            Style="{StaticResource BtnPrimary}" Margin="0,0,0,6" Click="BtnExecuteAll_Click"/>
+                    <Button x:Name="BtnExecuteSelected" Content="▷  Execute Selected" 
+                            Style="{StaticResource BtnGhost}" Margin="0,0,0,6" Click="BtnExecuteSelected_Click"/>
+                    <Button x:Name="BtnDeleteSelected" Content="✕  Delete Selected" 
+                            Style="{StaticResource BtnDanger}" Margin="0,0,0,0" Click="BtnDeleteSelected_Click"/>
+                </StackPanel>
+
+                <!-- SETTINGS -->
+                <StackPanel Grid.Row="2">
+                    <TextBlock x:Name="LblSettings" Text="SETTINGS" Foreground="#A8967E" FontSize="10" FontWeight="Bold" 
+                               FontFamily="Segoe UI" Margin="0,0,0,12"/>
+
+                    <TextBlock x:Name="LblBusinessSoftware" Text="Business software" Foreground="#8B7355" 
+                               FontSize="11" FontFamily="Segoe UI" Margin="0,0,0,4"/>
+                    <TextBox x:Name="TxtBusinessSoftware" Style="{StaticResource Input}" 
+                             Text="CalculatorApp" TextChanged="TxtBusinessSoftware_TextChanged"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,5,0,14">
+                        <Ellipse x:Name="MonitorDot" Width="7" Height="7" Fill="#5A7247" 
+                                 VerticalAlignment="Center" Margin="0,0,5,0"/>
+                        <TextBlock x:Name="LblMonitorStatus" Text="Not detected" Foreground="#5A7247" 
+                                   FontSize="10.5" VerticalAlignment="Center" FontFamily="Segoe UI"/>
+                    </StackPanel>
+
+                    <Border Height="1" Background="#E8DFD4" Margin="0,0,0,14" x:Name="Sep1"/>
+
+                    <TextBlock x:Name="LblEncryptionKey" Text="Encryption key" Foreground="#8B7355" 
+                               FontSize="11" FontFamily="Segoe UI" Margin="0,0,0,4"/>
+                    <TextBox x:Name="TxtEncryptionKey" Style="{StaticResource Input}" 
+                             Text="Prosoft123" Margin="0,0,0,12" LostFocus="TxtEncryptionKey_LostFocus"/>
+
+                    <TextBlock x:Name="LblEncryptionExtensions" Text="Encrypted extensions" Foreground="#8B7355" 
+                               FontSize="11" FontFamily="Segoe UI" Margin="0,0,0,4"/>
+                    <TextBox x:Name="TxtEncryptionExtensions" Style="{StaticResource Input}" 
+                             Text=".txt, .md, .pdf" LostFocus="TxtEncryptionExtensions_LostFocus"/>
+                </StackPanel>
+
+                <!-- THEME PICKER -->
+                <StackPanel Grid.Row="3" Margin="0,20,0,0">
+                    <TextBlock x:Name="LblTheme" Text="THEME" Foreground="#A8967E" FontSize="10" FontWeight="Bold" 
+                               FontFamily="Segoe UI" Margin="0,0,0,8"/>
+                    <WrapPanel x:Name="ThemePanel" Margin="0,0,0,0">
+                        <!-- Theme swatches are generated in code-behind -->
+                    </WrapPanel>
+                </StackPanel>
+
+                <!-- SPACER -->
+                <Border Grid.Row="4"/>
+
+                <!-- WARNING -->
+                <Border Grid.Row="5" x:Name="WarningBanner" Background="#FFF5F5" CornerRadius="6" 
+                        Padding="10,8" Margin="0,0,0,12" Visibility="Collapsed"
+                        BorderBrush="#FECACA" BorderThickness="1">
+                    <TextBlock x:Name="WarningText" Foreground="#9B2C2C" FontSize="11" 
+                               FontFamily="Segoe UI" TextWrapping="Wrap" FontWeight="SemiBold"/>
                 </Border>
 
-                <!-- Scrollable rows -->
-                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="8,4,8,8">
-                    <StackPanel x:Name="JobListPanel">
-                        <TextBlock x:Name="NoJobsText" Text="No backup jobs configured" 
-                                   Foreground="#A8967E" FontStyle="Italic" FontSize="13"
-                                   HorizontalAlignment="Center" Margin="0,36,0,0" FontFamily="Segoe UI"/>
+                <!-- FOOTER: job count + lang -->
+                <StackPanel Grid.Row="6">
+                    <Border Height="1" Background="#E8DFD4" Margin="0,0,0,12"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock x:Name="TxtJobCount" Grid.Column="0" Text="0 job(s)" 
+                                   Foreground="#A8967E" FontSize="11" VerticalAlignment="Center" FontFamily="Segoe UI"/>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                            <Button x:Name="BtnLangEn" Content="EN" Style="{StaticResource BtnLang}" 
+                                    Margin="0,0,2,0" Click="BtnLangEn_Click"/>
+                            <Button x:Name="BtnLangFr" Content="FR" Style="{StaticResource BtnLang}" 
+                                    Click="BtnLangFr_Click"/>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ████ MAIN AREA ████ -->
+        <Grid Grid.Column="1" Margin="28,24,28,20">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- CREATE FORM -->
+            <StackPanel Grid.Row="0" Margin="0,0,0,20">
+                <TextBlock x:Name="TxtNewJob" Text="New backup job" Foreground="#3D2B1F" FontSize="15" 
+                           FontWeight="SemiBold" FontFamily="Segoe UI" Margin="0,0,0,12"/>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="1.3*"/>
+                        <ColumnDefinition Width="1.3*"/>
+                        <ColumnDefinition Width="110"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                        <TextBlock x:Name="LblFormName" Text="Name" Foreground="#A8967E" FontSize="10.5" 
+                                   FontFamily="Segoe UI" Margin="0,0,0,4"/>
+                        <TextBox x:Name="TxtName" Style="{StaticResource InputFull}"/>
                     </StackPanel>
-                </ScrollViewer>
-            </Grid>
-        </Border>
-
-        <!-- ═══ ROW 4: ACTIONS ═══ -->
-        <Border Grid.Row="4" Style="{StaticResource Card}" Padding="14">
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                <Button x:Name="BtnExecuteSelected" Content="Execute Selected" 
-                        Style="{StaticResource BtnPrimary}" Margin="4,0" Click="BtnExecuteSelected_Click"/>
-                <Button x:Name="BtnExecuteAll" Content="Execute All" 
-                        Style="{StaticResource BtnPrimary}" Margin="4,0" Click="BtnExecuteAll_Click"/>
-                <Button x:Name="BtnDeleteSelected" Content="Delete Selected" 
-                        Style="{StaticResource BtnDanger}" Margin="4,0" Click="BtnDeleteSelected_Click"/>
+                    <StackPanel Grid.Column="1" Margin="0,0,8,0">
+                        <TextBlock x:Name="LblFormSource" Text="Source" Foreground="#A8967E" FontSize="10.5" 
+                                   FontFamily="Segoe UI" Margin="0,0,0,4"/>
+                        <TextBox x:Name="TxtSource" Style="{StaticResource InputFull}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Margin="0,0,8,0">
+                        <TextBlock x:Name="LblFormTarget" Text="Target" Foreground="#A8967E" FontSize="10.5" 
+                                   FontFamily="Segoe UI" Margin="0,0,0,4"/>
+                        <TextBox x:Name="TxtTarget" Style="{StaticResource InputFull}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="3" Margin="0,0,8,0">
+                        <TextBlock x:Name="LblFormType" Text="Type" Foreground="#A8967E" FontSize="10.5" 
+                                   FontFamily="Segoe UI" Margin="0,0,0,4"/>
+                        <ComboBox x:Name="CmbType" Background="White" Foreground="#3D2B1F" FontSize="13" 
+                                  FontFamily="Segoe UI" VerticalContentAlignment="Center" BorderBrush="#D1C4B2" Height="34">
+                            <ComboBoxItem Content="Full" IsSelected="True"/>
+                            <ComboBoxItem Content="Differential"/>
+                        </ComboBox>
+                    </StackPanel>
+                    <Button Grid.Column="4" x:Name="BtnCreate" Content="＋  Add" 
+                            Style="{StaticResource BtnPrimary}" VerticalAlignment="Bottom" 
+                            Padding="22,8" Click="BtnCreate_Click"/>
+                </Grid>
             </StackPanel>
-        </Border>
 
-        <!-- ═══ ROW 5: SETTINGS ═══ -->
-        <Border Grid.Row="5" Style="{StaticResource Card}" Padding="16">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="12"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
+            <!-- SEPARATOR -->
+            <Border Grid.Row="1" Height="1" Background="#E8DFD4" Margin="0,0,0,16"/>
 
-                <!-- Business software -->
-                <StackPanel Grid.Row="0" Orientation="Horizontal">
-                    <TextBlock Text="Business software:" Foreground="#8B7355" FontSize="12" 
-                               VerticalAlignment="Center" Margin="0,0,10,0" FontFamily="Segoe UI"/>
-                    <TextBox x:Name="TxtBusinessSoftware" Style="{StaticResource Input}" 
-                             Width="180" Text="CalculatorApp" TextChanged="TxtBusinessSoftware_TextChanged"/>
-                    <Border x:Name="MonitorDot" Width="8" Height="8" CornerRadius="4" 
-                            Background="#5A7247" Margin="12,0,6,0" VerticalAlignment="Center"/>
-                    <TextBlock x:Name="LblMonitorStatus" Text="Not detected" Foreground="#5A7247" 
-                               FontSize="11" VerticalAlignment="Center" FontFamily="Segoe UI"/>
-                </StackPanel>
+            <!-- PROGRESS -->
+            <Border Grid.Row="2" x:Name="ProgressPanel" Visibility="Collapsed" Margin="0,0,0,16">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid Grid.Row="0" Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Orientation="Horizontal">
+                            <TextBlock x:Name="TxtProgressJob" Text="" Foreground="#3D2B1F" FontSize="13" 
+                                       FontWeight="SemiBold" FontFamily="Segoe UI"/>
+                            <TextBlock Text="  —  " Foreground="#D1C4B2" FontSize="12" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="TxtProgressFiles" Text="" Foreground="#8B7355" FontSize="12" 
+                                       VerticalAlignment="Center" FontFamily="Segoe UI"/>
+                        </StackPanel>
+                        <TextBlock Grid.Column="1" x:Name="TxtProgressPct" Text="0%" Foreground="#6B4C3B" 
+                                   FontSize="15" FontWeight="Bold" FontFamily="Segoe UI"/>
+                    </Grid>
+                    <Border Grid.Row="1" x:Name="ProgressTrack" Background="#EDE3D6" CornerRadius="3" Height="6">
+                        <Border x:Name="ProgressFill" CornerRadius="3" HorizontalAlignment="Left" Width="0">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                    <GradientStop x:Name="GradStart" Color="#6B4C3B" Offset="0"/>
+                                    <GradientStop x:Name="GradEnd" Color="#A68B5B" Offset="1"/>
+                                </LinearGradientBrush>
+                            </Border.Background>
+                        </Border>
+                    </Border>
+                    <TextBlock Grid.Row="2" x:Name="TxtProgressFile" Text="" Foreground="#A8967E" FontSize="10.5" 
+                               Margin="0,5,0,0" TextTrimming="CharacterEllipsis" FontFamily="Segoe UI"/>
+                </Grid>
+            </Border>
 
-                <!-- CryptoSoft -->
-                <StackPanel Grid.Row="2" Orientation="Horizontal">
-                    <TextBlock Text="Encryption key:" Foreground="#8B7355" FontSize="12" 
-                               VerticalAlignment="Center" Margin="0,0,10,0" FontFamily="Segoe UI"/>
-                    <TextBox x:Name="TxtEncryptionKey" Style="{StaticResource Input}" 
-                             Width="140" Text="Prosoft123" LostFocus="TxtEncryptionKey_LostFocus"/>
-
-                    <Border Width="1" Background="#E8DFD4" Margin="18,2,18,2"/>
-
-                    <TextBlock Text="Extensions:" Foreground="#8B7355" FontSize="12" 
-                               VerticalAlignment="Center" Margin="0,0,10,0" FontFamily="Segoe UI"/>
-                    <TextBox x:Name="TxtEncryptionExtensions" Style="{StaticResource Input}" 
-                             Width="180" Text=".txt, .md, .pdf" LostFocus="TxtEncryptionExtensions_LostFocus"/>
-                </StackPanel>
-            </Grid>
-        </Border>
-
-        <!-- ═══ ROW 6: STATUS BAR ═══ -->
-        <Border Grid.Row="6" Background="White" CornerRadius="8" Padding="16,10" 
-                BorderBrush="#E8DFD4" BorderThickness="1">
-            <Grid>
+            <!-- COLUMN HEADERS -->
+            <Grid Grid.Row="3" Margin="12,0,12,6" x:Name="ColHeaders">
                 <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="32"/>
                     <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="1.4*"/>
+                    <ColumnDefinition Width="1.4*"/>
+                    <ColumnDefinition Width="80"/>
+                    <ColumnDefinition Width="70"/>
                 </Grid.ColumnDefinitions>
-                <TextBlock x:Name="TxtStatus" Grid.Column="0" Text="Ready" Foreground="#8B7355" 
-                           FontSize="12" VerticalAlignment="Center" FontFamily="Segoe UI"/>
-                <TextBlock x:Name="TxtJobCount" Grid.Column="1" Text="0 jobs" Foreground="#A8967E" 
-                           FontSize="12" VerticalAlignment="Center" FontFamily="Segoe UI"/>
+                <TextBlock Grid.Column="0" Text="#" Foreground="#B8A890" FontWeight="Bold" FontSize="10" FontFamily="Segoe UI"/>
+                <TextBlock Grid.Column="1" x:Name="ColName" Text="NAME" Foreground="#B8A890" FontWeight="Bold" FontSize="10" FontFamily="Segoe UI"/>
+                <TextBlock Grid.Column="2" x:Name="ColSource" Text="SOURCE" Foreground="#B8A890" FontWeight="Bold" FontSize="10" FontFamily="Segoe UI"/>
+                <TextBlock Grid.Column="3" x:Name="ColTarget" Text="TARGET" Foreground="#B8A890" FontWeight="Bold" FontSize="10" FontFamily="Segoe UI"/>
+                <TextBlock Grid.Column="4" x:Name="ColType" Text="TYPE" Foreground="#B8A890" FontWeight="Bold" FontSize="10" FontFamily="Segoe UI"/>
             </Grid>
-        </Border>
+
+            <!-- JOB LIST -->
+            <ScrollViewer Grid.Row="4" VerticalScrollBarVisibility="Auto">
+                <StackPanel x:Name="JobListPanel">
+                    <TextBlock x:Name="NoJobsText" Text="No backup jobs yet" 
+                               Foreground="#C4B5A5" FontSize="13" FontFamily="Segoe UI"
+                               HorizontalAlignment="Center" Margin="0,48,0,0"/>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- STATUS -->
+            <Grid Grid.Row="5" Margin="0,12,0,0">
+                <TextBlock x:Name="TxtStatus" Text="Ready" Foreground="#A8967E" FontSize="11.5" 
+                           FontFamily="Segoe UI" VerticalAlignment="Center"/>
+            </Grid>
+        </Grid>
     </Grid>
 </Window>
