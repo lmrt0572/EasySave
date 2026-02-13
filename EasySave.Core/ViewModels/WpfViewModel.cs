@@ -18,13 +18,6 @@ using EasySave.Core.Utils;
 
 namespace EasySave.Core.ViewModels
 {
-    // ===== WPF VIEW MODEL (V2.0) =====
-    // Differences from MainViewModel (V1.0/1.1):
-    //   - No MaxJobs limit (#6)
-    //   - Business software detection (#12, #13, #14, #15)
-    //   - CryptoSoft settings exposed for GUI (#8, #9, #10)
-    //   - INotifyPropertyChanged for WPF data binding
-    //   - Observable collections for UI reactivity
     public class WpfViewModel : INotifyPropertyChanged, IDisposable
     {
         // ===== PRIVATE MEMBERS =====
@@ -44,10 +37,12 @@ namespace EasySave.Core.ViewModels
         private bool _isExecuting;
         private string _statusMessage = string.Empty;
 
-        // ===== OBSERVABLE COLLECTION FOR WPF =====
-        public ObservableCollection<BackupJob> Jobs { get; }
+        private string _currentJobName = string.Empty;
+        private int _progressPercent;
+        private string _progressText = string.Empty;
+        private string _currentFileName = string.Empty;
 
-        // ===== EVENTS =====
+        public ObservableCollection<BackupJob> Jobs { get; }
         public event PropertyChangedEventHandler? PropertyChanged;
 
         // ===== BINDABLE PROPERTIES =====
@@ -75,27 +70,13 @@ namespace EasySave.Core.ViewModels
         public string BusinessSoftwareName
         {
             get => _businessSoftwareName;
-            set
-            {
-                _businessSoftwareName = value;
-                _monitor.ProcessName = value;
-                SaveConfig();
-                OnPropertyChanged();
-            }
+            set { _businessSoftwareName = value; _monitor.ProcessName = value; SaveConfig(); OnPropertyChanged(); }
         }
-
-        // ===== CRYPTOSOFT SETTINGS (Bastien #8, #9, #10) =====
 
         public string EncryptionKey
         {
             get => _encryptionKey;
-            set
-            {
-                _encryptionKey = value;
-                UpdateEncryptionService();
-                SaveConfig();
-                OnPropertyChanged();
-            }
+            set { _encryptionKey = value; UpdateEncryptionService(); SaveConfig(); OnPropertyChanged(); }
         }
 
         public string EncryptionExtensionsText
@@ -103,16 +84,37 @@ namespace EasySave.Core.ViewModels
             get => string.Join(", ", _encryptionExtensions);
             set
             {
-                _encryptionExtensions = value
-                    .Split(',', StringSplitOptions.RemoveEmptyEntries)
-                    .Select(e => e.Trim())
-                    .Where(e => !string.IsNullOrEmpty(e))
-                    .Select(e => e.StartsWith('.') ? e : "." + e)
-                    .ToList();
-                UpdateEncryptionService();
-                SaveConfig();
-                OnPropertyChanged();
+                _encryptionExtensions = value.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(e => e.Trim()).Where(e => !string.IsNullOrEmpty(e))
+                    .Select(e => e.StartsWith('.') ? e : "." + e).ToList();
+                UpdateEncryptionService(); SaveConfig(); OnPropertyChanged();
             }
+        }
+
+        // ===== PROGRESS PROPERTIES =====
+
+        public string CurrentJobName
+        {
+            get => _currentJobName;
+            private set { _currentJobName = value; OnPropertyChanged(); }
+        }
+
+        public int ProgressPercent
+        {
+            get => _progressPercent;
+            private set { _progressPercent = value; OnPropertyChanged(); }
+        }
+
+        public string ProgressText
+        {
+            get => _progressText;
+            private set { _progressText = value; OnPropertyChanged(); }
+        }
+
+        public string CurrentFileName
+        {
+            get => _currentFileName;
+            private set { _currentFileName = value; OnPropertyChanged(); }
         }
 
         // ===== CONSTRUCTOR =====
@@ -123,25 +125,21 @@ namespace EasySave.Core.ViewModels
             _jobs = new List<BackupJob>();
             Jobs = new ObservableCollection<BackupJob>();
 
-            // --- Config path setup (SAME path as MainViewModel) ---
             string appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             string configDir = Path.Combine(appDataPath, "EasySave");
             Directory.CreateDirectory(configDir);
             _configPath = Path.Combine(configDir, "config.json");
 
-            // --- Load config (SAME format as MainViewModel) ---
             LoadConfig();
             UpdateEncryptionService();
             RefreshObservableJobs();
 
-            // --- Business software monitor (#12) ---
             _monitor = BusinessSoftwareMonitor.Instance;
             _monitor.ProcessName = _businessSoftwareName;
             _monitor.DetectionChanged += OnBusinessSoftwareDetectionChanged;
             _monitor.Start(2000);
         }
 
-        // ===== LANGUAGE =====
         public LanguageManager GetLanguageManager() => _languageManager;
 
         public void SetLanguage(EasySave.Core.Models.Enums.Language lang)
@@ -150,30 +148,19 @@ namespace EasySave.Core.ViewModels
             OnPropertyChanged(nameof(Jobs));
         }
 
-        // ===== JOB MANAGEMENT (NO MAX LIMIT - #6) =====
+        // ===== JOB MANAGEMENT =====
 
         public int GetJobCount() => _jobs.Count;
 
         public bool CreateJob(string name, string source, string target, int typeInput)
         {
-            // #6 - NO MaxJobs validation
+            if (string.IsNullOrWhiteSpace(name)) return false;
+            if (_jobs.Any(j => j.Name.Equals(name, StringComparison.OrdinalIgnoreCase))) return false;
+            if (!FileUtils.DirectoryExists(source)) return false;
 
-            if (string.IsNullOrWhiteSpace(name))
-                return false;
-
-            if (_jobs.Any(j => j.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
-                return false;
-
-            if (!FileUtils.DirectoryExists(source))
-                return false;
-
-            BackupType type = typeInput == 2 ? BackupType.Differential : BackupType.Full;
-
-            var job = new BackupJob(name, source, target, type);
+            var job = new BackupJob(name, source, target, typeInput == 2 ? BackupType.Differential : BackupType.Full);
             _jobs.Add(job);
-            SaveConfig();
-            RefreshObservableJobs();
-
+            SaveConfig(); RefreshObservableJobs();
             StatusMessage = _languageManager.GetText("job_created");
             return true;
         }
@@ -181,134 +168,93 @@ namespace EasySave.Core.ViewModels
         public bool DeleteJob(BackupJob job)
         {
             if (job == null) return false;
-
-            _jobs.Remove(job);
-            SaveConfig();
-            RefreshObservableJobs();
-
+            _jobs.Remove(job); SaveConfig(); RefreshObservableJobs();
             StatusMessage = _languageManager.GetText("job_deleted");
             return true;
         }
 
-        public bool DeleteJobByIndex(int zeroBasedIndex)
+        public bool DeleteJobByIndex(int idx)
         {
-            if (zeroBasedIndex < 0 || zeroBasedIndex >= _jobs.Count)
-                return false;
-
-            _jobs.RemoveAt(zeroBasedIndex);
-            SaveConfig();
-            RefreshObservableJobs();
-
+            if (idx < 0 || idx >= _jobs.Count) return false;
+            _jobs.RemoveAt(idx); SaveConfig(); RefreshObservableJobs();
             StatusMessage = _languageManager.GetText("job_deleted");
             return true;
         }
 
-        // ===== EXECUTION WITH BUSINESS SOFTWARE CHECK (#13, #14) =====
+        // ===== EXECUTION =====
 
         public async Task ExecuteJob(BackupJob job)
         {
             if (job == null) return;
+            if (_monitor.CheckNow()) { IsBusinessSoftwareDetected = true; StatusMessage = _languageManager.GetText("error_business_software"); return; }
 
-            // #13 - Block if business software detected
-            if (_monitor.CheckNow())
-            {
-                IsBusinessSoftwareDetected = true;
-                StatusMessage = _languageManager.GetText("error_business_software");
-                return;
-            }
-
-            IsExecuting = true;
-            _currentCts = new CancellationTokenSource();
-
+            IsExecuting = true; _currentCts = new CancellationTokenSource(); ResetProgress();
             try
             {
                 await ExecuteSingleJob(job, _currentCts.Token);
                 StatusMessage = _languageManager.GetText("job_executed");
             }
-            catch (OperationCanceledException)
-            {
-                // #14 - Job was stopped by business software detection
-                StatusMessage = _languageManager.GetText("job_stopped_business_software");
-            }
-            catch (Exception ex)
-            {
-                StatusMessage = $"{_languageManager.GetText("error_execution")}: {ex.Message}";
-            }
-            finally
-            {
-                IsExecuting = false;
-                _currentCts?.Dispose();
-                _currentCts = null;
-            }
+            catch (OperationCanceledException) { StatusMessage = _languageManager.GetText("job_stopped_business_software"); }
+            catch (Exception ex) { StatusMessage = $"{_languageManager.GetText("error_execution")}: {ex.Message}"; }
+            finally { IsExecuting = false; _currentCts?.Dispose(); _currentCts = null; }
         }
 
         public async Task ExecuteAllJobs()
         {
-            // #13 - Block if business software detected
-            if (_monitor.CheckNow())
-            {
-                IsBusinessSoftwareDetected = true;
-                StatusMessage = _languageManager.GetText("error_business_software");
-                return;
-            }
+            if (_monitor.CheckNow()) { IsBusinessSoftwareDetected = true; StatusMessage = _languageManager.GetText("error_business_software"); return; }
 
-            IsExecuting = true;
-            _currentCts = new CancellationTokenSource();
-
+            IsExecuting = true; _currentCts = new CancellationTokenSource(); ResetProgress();
             try
             {
                 foreach (var job in _jobs.ToList())
                 {
-                    // #13 - Re-check before each job
-                    if (_monitor.CheckNow())
-                    {
-                        StatusMessage = _languageManager.GetText("error_business_software");
-                        break;
-                    }
-
+                    if (_monitor.CheckNow()) { StatusMessage = _languageManager.GetText("error_business_software"); break; }
                     await ExecuteSingleJob(job, _currentCts.Token);
                 }
-
-                if (!_currentCts.IsCancellationRequested)
-                    StatusMessage = _languageManager.GetText("job_executed");
+                if (!_currentCts.IsCancellationRequested) StatusMessage = _languageManager.GetText("job_executed");
             }
-            catch (OperationCanceledException)
-            {
-                StatusMessage = _languageManager.GetText("job_stopped_business_software");
-            }
-            catch (Exception ex)
-            {
-                StatusMessage = $"{_languageManager.GetText("error_execution")}: {ex.Message}";
-            }
-            finally
-            {
-                IsExecuting = false;
-                _currentCts?.Dispose();
-                _currentCts = null;
-            }
+            catch (OperationCanceledException) { StatusMessage = _languageManager.GetText("job_stopped_business_software"); }
+            catch (Exception ex) { StatusMessage = $"{_languageManager.GetText("error_execution")}: {ex.Message}"; }
+            finally { IsExecuting = false; _currentCts?.Dispose(); _currentCts = null; }
         }
 
-        // ===== SINGLE JOB EXECUTION =====
         private async Task ExecuteSingleJob(BackupJob job, CancellationToken token)
         {
             string exePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "CryptoSoft.exe");
-            if (!File.Exists(exePath))
-            {
-                StatusMessage = "ERROR : CryptoSoft.exe could not be found";
-                return;
-            }
+            if (!File.Exists(exePath)) { StatusMessage = "ERROR: CryptoSoft.exe not found"; return; }
 
-            // --- Select strategy based on job type ---
-            IBackupStrategy strategy = job.Type == BackupType.Full
-                ? new FullBackupStrategy()
-                : new DifferentialBackupStrategy();
-
-            // --- Create execution service ---
+            IBackupStrategy strategy = job.Type == BackupType.Full ? new FullBackupStrategy() : new DifferentialBackupStrategy();
             var logService = LogService.Instance;
             var execution = new ServiceBackupExecution(strategy, logService, _stateService, _encryptionService);
 
-            // --- Execute (ServiceBackupExecution handles logging + re-throws on cancel) ---
-            await execution.Execute(job, _businessSoftwareName, token);
+            CurrentJobName = job.Name;
+            execution.StateUpdated += OnStateUpdated;
+            try { await execution.Execute(job, _businessSoftwareName, token); }
+            finally { execution.StateUpdated -= OnStateUpdated; }
+        }
+
+        // ===== PROGRESS =====
+
+        private void OnStateUpdated(BackupJobState state)
+        {
+            ProgressPercent = state.Progression;
+            int done = state.TotalFilesToCopy - state.RemainingFiles;
+            ProgressText = $"{done} / {state.TotalFilesToCopy}";
+
+            string file = state.CurrentSourceFile ?? string.Empty;
+            if (file.Length > 0) CurrentFileName = Path.GetFileName(file);
+            else if (state.Status == BackupStatus.Completed)
+            {
+                CurrentFileName = string.Empty;
+                ProgressText = $"{state.TotalFilesToCopy} / {state.TotalFilesToCopy}";
+                ProgressPercent = 100;
+            }
+        }
+
+        private void ResetProgress()
+        {
+            CurrentJobName = string.Empty; ProgressPercent = 0;
+            ProgressText = string.Empty; CurrentFileName = string.Empty;
         }
 
         // ===== ENCRYPTION =====
@@ -316,64 +262,33 @@ namespace EasySave.Core.ViewModels
         {
             _encryptionService = new EncryptionService(
                 exePath: Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "CryptoSoft.exe"),
-                key: _encryptionKey,
-                extensions: _encryptionExtensions
-            );
+                key: _encryptionKey, extensions: _encryptionExtensions);
         }
 
-        // ===== BUSINESS SOFTWARE DETECTION HANDLER =====
-
+        // ===== BUSINESS SOFTWARE =====
         private void OnBusinessSoftwareDetectionChanged(bool detected)
         {
             IsBusinessSoftwareDetected = detected;
-
-            if (detected)
-            {
-                StatusMessage = _languageManager.GetText("error_business_software");
-                // #14 - If executing, cancel after current file
-                _currentCts?.Cancel();
-            }
-            else
-            {
-                StatusMessage = _languageManager.GetText("business_software_cleared");
-            }
+            if (detected) { StatusMessage = _languageManager.GetText("error_business_software"); _currentCts?.Cancel(); }
+            else StatusMessage = _languageManager.GetText("business_software_cleared");
         }
 
         // ===== PERSISTENCE =====
-        // USES THE SAME AppConfigDto FORMAT AS MainViewModel
-        // Both Console and WPF read/write the same config.json structure
-
         private void LoadConfig()
         {
-            if (!File.Exists(_configPath))
-            {
-                _jobs = new List<BackupJob>();
-                return;
-            }
-
+            if (!File.Exists(_configPath)) { _jobs = new List<BackupJob>(); return; }
             try
             {
-                string json = File.ReadAllText(_configPath);
-                var configDto = JsonSerializer.Deserialize<AppConfigDto>(json);
-
+                var configDto = JsonSerializer.Deserialize<AppConfigDto>(File.ReadAllText(_configPath));
                 if (configDto != null)
                 {
                     _encryptionKey = configDto.EncryptionKey ?? "Prosoft123";
                     _encryptionExtensions = configDto.EncryptionExtensions ?? new List<string> { ".txt", ".md", ".pdf" };
                     _businessSoftwareName = configDto.BusinessSoftwareName ?? "CalculatorApp";
-
-                    _jobs = configDto.Jobs?.Select(dto => new BackupJob(
-                        dto.Name ?? string.Empty,
-                        dto.SourceDirectory ?? string.Empty,
-                        dto.TargetDirectory ?? string.Empty,
-                        dto.Type
-                    )).ToList() ?? new List<BackupJob>();
+                    _jobs = configDto.Jobs?.Select(dto => new BackupJob(dto.Name ?? "", dto.SourceDirectory ?? "", dto.TargetDirectory ?? "", dto.Type)).ToList() ?? new List<BackupJob>();
                 }
             }
-            catch
-            {
-                _jobs = new List<BackupJob>();
-            }
+            catch { _jobs = new List<BackupJob>(); }
         }
 
         private void SaveConfig()
@@ -383,57 +298,16 @@ namespace EasySave.Core.ViewModels
                 EncryptionKey = _encryptionKey,
                 EncryptionExtensions = _encryptionExtensions,
                 BusinessSoftwareName = _businessSoftwareName,
-                Jobs = _jobs.Select(j => new BackupJobDto
-                {
-                    Name = j.Name,
-                    SourceDirectory = j.SourceDirectory,
-                    TargetDirectory = j.TargetDirectory,
-                    Type = j.Type
-                }).ToList()
+                Jobs = _jobs.Select(j => new BackupJobDto { Name = j.Name, SourceDirectory = j.SourceDirectory, TargetDirectory = j.TargetDirectory, Type = j.Type }).ToList()
             };
-
-            var options = new JsonSerializerOptions { WriteIndented = true };
-            string json = JsonSerializer.Serialize(configDto, options);
-            File.WriteAllText(_configPath, json);
+            File.WriteAllText(_configPath, JsonSerializer.Serialize(configDto, new JsonSerializerOptions { WriteIndented = true }));
         }
 
-        // ===== HELPERS =====
+        private void RefreshObservableJobs() { Jobs.Clear(); foreach (var j in _jobs) Jobs.Add(j); }
+        private void OnPropertyChanged([CallerMemberName] string? name = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+        public void Dispose() { _monitor.DetectionChanged -= OnBusinessSoftwareDetectionChanged; _monitor.Stop(); _currentCts?.Dispose(); }
 
-        private void RefreshObservableJobs()
-        {
-            Jobs.Clear();
-            foreach (var job in _jobs)
-                Jobs.Add(job);
-        }
-
-        private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-
-        // ===== CLEANUP =====
-        public void Dispose()
-        {
-            _monitor.DetectionChanged -= OnBusinessSoftwareDetectionChanged;
-            _monitor.Stop();
-            _currentCts?.Dispose();
-        }
-
-        // ===== DTO (SAME STRUCTURE AS MainViewModel) =====
-        private class AppConfigDto
-        {
-            public string? EncryptionKey { get; set; }
-            public List<string>? EncryptionExtensions { get; set; }
-            public string? BusinessSoftwareName { get; set; }
-            public List<BackupJobDto>? Jobs { get; set; }
-        }
-
-        private class BackupJobDto
-        {
-            public string? Name { get; set; }
-            public string? SourceDirectory { get; set; }
-            public string? TargetDirectory { get; set; }
-            public BackupType Type { get; set; }
-        }
+        private class AppConfigDto { public string? EncryptionKey { get; set; } public List<string>? EncryptionExtensions { get; set; } public string? BusinessSoftwareName { get; set; } public List<BackupJobDto>? Jobs { get; set; } }
+        private class BackupJobDto { public string? Name { get; set; } public string? SourceDirectory { get; set; } public string? TargetDirectory { get; set; } public BackupType Type { get; set; } }
     }
 }

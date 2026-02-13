@@ -10,26 +10,33 @@ using EasySave.Core.ViewModels;
 
 namespace EasySave.WPF
 {
-    /// <summary>
-    /// MainView for EasySave V2.0
-    /// </summary>
     public partial class MainView : Window
     {
-        // ===== PRIVATE MEMBERS =====
         private readonly WpfViewModel _viewModel;
         private readonly LanguageManager _lang;
         private readonly HashSet<BackupJob> _selectedJobs = new();
 
-        // ===== CONSTRUCTOR =====
+        // ===== THEME COLORS (change these to test other themes) =====
+        private static readonly Color ClrText = (Color)ColorConverter.ConvertFromString("#3D2B1F");
+        private static readonly Color ClrTextSoft = (Color)ColorConverter.ConvertFromString("#8B7355");
+        private static readonly Color ClrAccent = (Color)ColorConverter.ConvertFromString("#6B4C3B");
+        private static readonly Color ClrBg = (Color)ColorConverter.ConvertFromString("#FAF6F1");
+        private static readonly Color ClrRowBg = (Color)ColorConverter.ConvertFromString("#FDFCFA");
+        private static readonly Color ClrRowHover = (Color)ColorConverter.ConvertFromString("#F5EDE4");
+        private static readonly Color ClrRowSelect = (Color)ColorConverter.ConvertFromString("#EDE3D6");
+        private static readonly Color ClrBorder = (Color)ColorConverter.ConvertFromString("#E8DFD4");
+        private static readonly Color ClrSuccess = (Color)ColorConverter.ConvertFromString("#5A7247");
+        private static readonly Color ClrDanger = (Color)ColorConverter.ConvertFromString("#9B2C2C");
+        private static readonly Color ClrBadgeFull = (Color)ColorConverter.ConvertFromString("#6B4C3B");
+        private static readonly Color ClrBadgeDiff = (Color)ColorConverter.ConvertFromString("#5A7247");
+
         public MainView()
         {
             InitializeComponent();
 
-            // Initialize ViewModel
             _lang = new LanguageManager();
             _viewModel = new WpfViewModel(_lang);
 
-            // Subscribe to property changes for UI updates
             _viewModel.PropertyChanged += (s, e) =>
             {
                 Dispatcher.Invoke(() =>
@@ -39,58 +46,77 @@ namespace EasySave.WPF
                         case nameof(WpfViewModel.StatusMessage):
                             TxtStatus.Text = _viewModel.StatusMessage;
                             break;
-
                         case nameof(WpfViewModel.IsBusinessSoftwareDetected):
-                            UpdateBusinessSoftwareWarning();
+                            UpdateWarning();
                             break;
-
                         case nameof(WpfViewModel.CanExecute):
-                            UpdateExecuteButtons();
+                            UpdateButtons();
+                            break;
+                        case nameof(WpfViewModel.IsExecuting):
+                            ProgressPanel.Visibility = _viewModel.IsExecuting ? Visibility.Visible : Visibility.Collapsed;
+                            break;
+                        case nameof(WpfViewModel.ProgressPercent):
+                            UpdateProgress();
+                            break;
+                        case nameof(WpfViewModel.ProgressText):
+                            TxtProgressFiles.Text = _viewModel.ProgressText;
+                            break;
+                        case nameof(WpfViewModel.CurrentJobName):
+                            TxtProgressJob.Text = _viewModel.CurrentJobName;
+                            break;
+                        case nameof(WpfViewModel.CurrentFileName):
+                            TxtProgressFile.Text = _viewModel.CurrentFileName;
                             break;
                     }
                 });
             };
 
-            // --- Load initial values from ViewModel into UI ---
             TxtBusinessSoftware.Text = _viewModel.BusinessSoftwareName;
             TxtEncryptionKey.Text = _viewModel.EncryptionKey;
             TxtEncryptionExtensions.Text = _viewModel.EncryptionExtensionsText;
 
-            // Initial UI refresh
             RefreshJobList();
-            UpdateBusinessSoftwareWarning();
-            UpdateExecuteButtons();
+            UpdateWarning();
+            UpdateButtons();
         }
 
-        // ===== JOB LIST RENDERING =====
+        // ===== PROGRESS =====
+
+        private void UpdateProgress()
+        {
+            int pct = _viewModel.ProgressPercent;
+            TxtProgressPct.Text = $"{pct}%";
+
+            // Animate the fill bar width relative to parent
+            double parentWidth = ProgressFill.Parent is Border parent ? parent.ActualWidth : 400;
+            ProgressFill.Width = Math.Max(0, parentWidth * pct / 100.0);
+        }
+
+        // ===== JOB LIST =====
 
         private void RefreshJobList()
         {
             JobListPanel.Children.Clear();
             _selectedJobs.Clear();
-
             var jobs = _viewModel.Jobs;
 
             if (jobs.Count == 0)
             {
-                var noJobs = new TextBlock
+                JobListPanel.Children.Add(new TextBlock
                 {
                     Text = _lang.GetText("no_jobs"),
-                    Foreground = new SolidColorBrush(Color.FromRgb(0x66, 0x66, 0x66)),
+                    Foreground = new SolidColorBrush(ClrTextSoft),
                     FontStyle = FontStyles.Italic,
-                    FontSize = 14,
+                    FontSize = 13,
+                    FontFamily = new FontFamily("Segoe UI"),
                     HorizontalAlignment = HorizontalAlignment.Center,
-                    Margin = new Thickness(0, 40, 0, 0)
-                };
-                JobListPanel.Children.Add(noJobs);
+                    Margin = new Thickness(0, 36, 0, 0)
+                });
             }
             else
             {
                 for (int i = 0; i < jobs.Count; i++)
-                {
-                    var row = CreateJobRow(jobs[i], i + 1);
-                    JobListPanel.Children.Add(row);
-                }
+                    JobListPanel.Children.Add(CreateJobRow(jobs[i], i + 1));
             }
 
             TxtJobCount.Text = $"{jobs.Count} job(s)";
@@ -98,151 +124,129 @@ namespace EasySave.WPF
 
         private Border CreateJobRow(BackupJob job, int index)
         {
-            string typeText = job.Type == BackupType.Full
-                ? _lang.GetText("type_full")
-                : _lang.GetText("type_differential");
+            bool isFull = job.Type == BackupType.Full;
+            string typeText = isFull ? _lang.GetText("type_full") : _lang.GetText("type_differential");
+            Color badgeColor = isFull ? ClrBadgeFull : ClrBadgeDiff;
 
             var grid = new Grid();
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(40) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(36) });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.5, GridUnitType.Star) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.5, GridUnitType.Star) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(100) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(80) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(80) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.4, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.4, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(90) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(90) });
 
-            // Index
-            var indexText = new TextBlock
-            {
-                Text = index.ToString(),
-                Foreground = Brushes.Gray,
-                VerticalAlignment = VerticalAlignment.Center,
-                FontSize = 13
-            };
-            Grid.SetColumn(indexText, 0);
-            grid.Children.Add(indexText);
-
+            // #
+            AddText(grid, 0, index.ToString(), ClrTextSoft, 12);
             // Name
-            var nameText = new TextBlock
-            {
-                Text = job.Name,
-                Foreground = Brushes.White,
-                VerticalAlignment = VerticalAlignment.Center,
-                FontSize = 13,
-                FontWeight = FontWeights.SemiBold
-            };
-            Grid.SetColumn(nameText, 1);
-            grid.Children.Add(nameText);
-
+            AddText(grid, 1, job.Name, ClrText, 13, true);
             // Source
-            var sourceText = new TextBlock
-            {
-                Text = job.SourceDirectory,
-                Foreground = new SolidColorBrush(Color.FromRgb(0xA0, 0xA0, 0xB8)),
-                VerticalAlignment = VerticalAlignment.Center,
-                FontSize = 12,
-                TextTrimming = TextTrimming.CharacterEllipsis
-            };
-            Grid.SetColumn(sourceText, 2);
-            grid.Children.Add(sourceText);
-
+            AddText(grid, 2, job.SourceDirectory, ClrTextSoft, 11.5, false, true);
             // Target
-            var targetText = new TextBlock
-            {
-                Text = job.TargetDirectory,
-                Foreground = new SolidColorBrush(Color.FromRgb(0xA0, 0xA0, 0xB8)),
-                VerticalAlignment = VerticalAlignment.Center,
-                FontSize = 12,
-                TextTrimming = TextTrimming.CharacterEllipsis
-            };
-            Grid.SetColumn(targetText, 3);
-            grid.Children.Add(targetText);
+            AddText(grid, 3, job.TargetDirectory, ClrTextSoft, 11.5, false, true);
 
             // Type badge
-            var typeBadge = new Border
+            var badge = new Border
             {
-                Background = job.Type == BackupType.Full
-                    ? new SolidColorBrush(Color.FromArgb(0x33, 0x7C, 0x3A, 0xED))
-                    : new SolidColorBrush(Color.FromArgb(0x33, 0x05, 0x96, 0x69)),
-                CornerRadius = new CornerRadius(4),
-                Padding = new Thickness(8, 2, 8, 2),
+                Background = new SolidColorBrush(Color.FromArgb(0x18, badgeColor.R, badgeColor.G, badgeColor.B)),
+                CornerRadius = new CornerRadius(5),
+                Padding = new Thickness(8, 3, 8, 3),
                 VerticalAlignment = VerticalAlignment.Center,
-                HorizontalAlignment = HorizontalAlignment.Left
+                HorizontalAlignment = HorizontalAlignment.Left,
+                Child = new TextBlock
+                {
+                    Text = typeText,
+                    Foreground = new SolidColorBrush(badgeColor),
+                    FontSize = 11,
+                    FontWeight = FontWeights.SemiBold,
+                    FontFamily = new FontFamily("Segoe UI")
+                }
             };
-            typeBadge.Child = new TextBlock
-            {
-                Text = typeText,
-                Foreground = job.Type == BackupType.Full
-                    ? new SolidColorBrush(Color.FromRgb(0x8B, 0x5C, 0xF6))
-                    : new SolidColorBrush(Color.FromRgb(0x10, 0xB9, 0x81)),
-                FontSize = 11,
-                FontWeight = FontWeights.SemiBold
-            };
-            Grid.SetColumn(typeBadge, 4);
-            grid.Children.Add(typeBadge);
+            Grid.SetColumn(badge, 4);
+            grid.Children.Add(badge);
 
-            // Execute button
+            // Action buttons
+            var actions = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center };
+
             var btnExec = new Button
             {
                 Content = "▶",
-                FontSize = 14,
-                Padding = new Thickness(8, 4, 8, 4),
-                Cursor = System.Windows.Input.Cursors.Hand,
-                Background = new SolidColorBrush(Color.FromRgb(0x7C, 0x3A, 0xED)),
-                Foreground = Brushes.White,
-                BorderThickness = new Thickness(0),
+                Style = (Style)FindResource("BtnIcon"),
+                Foreground = new SolidColorBrush(ClrAccent),
                 IsEnabled = _viewModel.CanExecute
             };
             btnExec.Click += (s, e) => ExecuteSingleJob(job);
-            Grid.SetColumn(btnExec, 5);
-            grid.Children.Add(btnExec);
+            actions.Children.Add(btnExec);
 
-            // Delete button
             var btnDel = new Button
             {
                 Content = "✕",
-                FontSize = 14,
-                Padding = new Thickness(8, 4, 8, 4),
-                Cursor = System.Windows.Input.Cursors.Hand,
-                Background = new SolidColorBrush(Color.FromRgb(0xDC, 0x26, 0x26)),
-                Foreground = Brushes.White,
-                BorderThickness = new Thickness(0)
+                Style = (Style)FindResource("BtnIcon"),
+                Foreground = new SolidColorBrush(ClrDanger)
             };
-            btnDel.Click += (s, e) =>
-            {
-                _viewModel.DeleteJob(job);
-                RefreshJobList();
-            };
-            Grid.SetColumn(btnDel, 6);
-            grid.Children.Add(btnDel);
+            btnDel.Click += (s, e) => { _viewModel.DeleteJob(job); RefreshJobList(); };
+            actions.Children.Add(btnDel);
 
-            // Row container
+            Grid.SetColumn(actions, 5);
+            grid.Children.Add(actions);
+
+            // Row border
             var border = new Border
             {
-                Background = new SolidColorBrush(Color.FromRgb(0x33, 0x33, 0x48)),
-                CornerRadius = new CornerRadius(6),
-                Padding = new Thickness(8, 10, 8, 10),
+                Background = new SolidColorBrush(ClrRowBg),
+                CornerRadius = new CornerRadius(8),
+                Padding = new Thickness(12, 10, 12, 10),
                 Margin = new Thickness(0, 2, 0, 2),
+                BorderBrush = new SolidColorBrush(Colors.Transparent),
+                BorderThickness = new Thickness(1),
                 Child = grid,
                 Cursor = System.Windows.Input.Cursors.Hand
             };
 
-            // Click to toggle selection
+            border.MouseEnter += (s, e) =>
+            {
+                if (!_selectedJobs.Contains(job))
+                    border.Background = new SolidColorBrush(ClrRowHover);
+            };
+            border.MouseLeave += (s, e) =>
+            {
+                if (!_selectedJobs.Contains(job))
+                    border.Background = new SolidColorBrush(ClrRowBg);
+            };
             border.MouseLeftButtonDown += (s, e) =>
             {
                 if (_selectedJobs.Contains(job))
                 {
                     _selectedJobs.Remove(job);
-                    border.Background = new SolidColorBrush(Color.FromRgb(0x33, 0x33, 0x48));
+                    border.Background = new SolidColorBrush(ClrRowBg);
+                    border.BorderBrush = new SolidColorBrush(Colors.Transparent);
                 }
                 else
                 {
                     _selectedJobs.Add(job);
-                    border.Background = new SolidColorBrush(Color.FromRgb(0x3D, 0x3D, 0x5C));
+                    border.Background = new SolidColorBrush(ClrRowSelect);
+                    border.BorderBrush = new SolidColorBrush(ClrBorder);
                 }
             };
 
             return border;
+        }
+
+        private void AddText(Grid grid, int col, string text, Color color, double size,
+            bool bold = false, bool trim = false)
+        {
+            var tb = new TextBlock
+            {
+                Text = text,
+                Foreground = new SolidColorBrush(color),
+                FontSize = size,
+                FontFamily = new FontFamily("Segoe UI"),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            if (bold) tb.FontWeight = FontWeights.SemiBold;
+            if (trim) tb.TextTrimming = TextTrimming.CharacterEllipsis;
+            Grid.SetColumn(tb, col);
+            grid.Children.Add(tb);
         }
 
         // ===== BUTTON HANDLERS =====
@@ -257,40 +261,21 @@ namespace EasySave.WPF
             if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(source) || string.IsNullOrWhiteSpace(target))
             {
                 TxtStatus.Text = _lang.GetText("error_invalid_choice");
-                TxtStatus.Foreground = new SolidColorBrush(Color.FromRgb(0xEF, 0x44, 0x44));
                 return;
             }
 
-            bool created = _viewModel.CreateJob(name, source, target, typeInput);
-            if (created)
+            if (_viewModel.CreateJob(name, source, target, typeInput))
             {
-                TxtName.Clear();
-                TxtSource.Clear();
-                TxtTarget.Clear();
-                CmbType.SelectedIndex = 0;
-                TxtStatus.Foreground = new SolidColorBrush(Color.FromRgb(0x10, 0xB9, 0x81));
+                TxtName.Clear(); TxtSource.Clear(); TxtTarget.Clear(); CmbType.SelectedIndex = 0;
                 RefreshJobList();
-            }
-            else
-            {
-                TxtStatus.Text = _lang.GetText("error_invalid_choice");
-                TxtStatus.Foreground = new SolidColorBrush(Color.FromRgb(0xEF, 0x44, 0x44));
             }
         }
 
         private async void BtnExecuteSelected_Click(object sender, RoutedEventArgs e)
         {
-            if (_selectedJobs.Count == 0)
-            {
-                TxtStatus.Text = _lang.GetText("error_job_not_found");
-                return;
-            }
-
-            var jobsToExecute = new List<BackupJob>(_selectedJobs);
-            foreach (var job in jobsToExecute)
-            {
+            if (_selectedJobs.Count == 0) { TxtStatus.Text = _lang.GetText("error_job_not_found"); return; }
+            foreach (var job in new List<BackupJob>(_selectedJobs))
                 await Task.Run(() => _viewModel.ExecuteJob(job));
-            }
             RefreshJobList();
         }
 
@@ -302,28 +287,19 @@ namespace EasySave.WPF
 
         private void BtnDeleteSelected_Click(object sender, RoutedEventArgs e)
         {
-            if (_selectedJobs.Count == 0)
-            {
-                TxtStatus.Text = _lang.GetText("error_job_not_found");
-                return;
-            }
-
-            var jobsToDelete = new List<BackupJob>(_selectedJobs);
-            foreach (var job in jobsToDelete)
-            {
+            if (_selectedJobs.Count == 0) { TxtStatus.Text = _lang.GetText("error_job_not_found"); return; }
+            foreach (var job in new List<BackupJob>(_selectedJobs))
                 _viewModel.DeleteJob(job);
-            }
             RefreshJobList();
         }
 
         private async void ExecuteSingleJob(BackupJob job)
         {
             await Task.Run(() => _viewModel.ExecuteJob(job));
-            Dispatcher.Invoke(() => RefreshJobList());
+            Dispatcher.Invoke(RefreshJobList);
         }
 
         // ===== LANGUAGE =====
-        // Use FULL qualified enum to avoid conflict with System.Windows.Markup.XmlLanguage
 
         private void BtnLangEn_Click(object sender, RoutedEventArgs e)
         {
@@ -341,58 +317,50 @@ namespace EasySave.WPF
 
         private void TxtBusinessSoftware_TextChanged(object sender, TextChangedEventArgs e)
         {
-            if (_viewModel != null)
-            {
-                _viewModel.BusinessSoftwareName = TxtBusinessSoftware.Text.Trim();
-            }
+            if (_viewModel != null) _viewModel.BusinessSoftwareName = TxtBusinessSoftware.Text.Trim();
         }
 
-        // ===== CRYPTOSOFT SETTINGS =====
-
-        private void TxtEncryptionKey_TextChanged(object sender, RoutedEventArgs e)
+        private void TxtEncryptionKey_LostFocus(object sender, RoutedEventArgs e)
         {
-            if (_viewModel != null)
-            {
+            if (_viewModel != null && !string.IsNullOrWhiteSpace(TxtEncryptionKey.Text))
                 _viewModel.EncryptionKey = TxtEncryptionKey.Text.Trim();
-            }
         }
 
-        private void TxtEncryptionExtensions_TextChanged(object sender, RoutedEventArgs e)
+        private void TxtEncryptionExtensions_LostFocus(object sender, RoutedEventArgs e)
         {
-            if (_viewModel != null)
-            {
+            if (_viewModel != null && !string.IsNullOrWhiteSpace(TxtEncryptionExtensions.Text))
                 _viewModel.EncryptionExtensionsText = TxtEncryptionExtensions.Text.Trim();
-            }
         }
 
-        // ===== UI UPDATES =====
+        // ===== UI STATE =====
 
-        private void UpdateBusinessSoftwareWarning()
+        private void UpdateWarning()
         {
             if (_viewModel.IsBusinessSoftwareDetected)
             {
                 WarningBanner.Visibility = Visibility.Visible;
                 WarningText.Text = _lang.GetText("error_business_software");
-                LblMonitorStatus.Text = "● Detected";
-                LblMonitorStatus.Foreground = new SolidColorBrush(Color.FromRgb(0xEF, 0x44, 0x44));
+                MonitorDot.Background = new SolidColorBrush(ClrDanger);
+                LblMonitorStatus.Text = "Detected";
+                LblMonitorStatus.Foreground = new SolidColorBrush(ClrDanger);
             }
             else
             {
                 WarningBanner.Visibility = Visibility.Collapsed;
-                LblMonitorStatus.Text = "● Not detected";
-                LblMonitorStatus.Foreground = new SolidColorBrush(Color.FromRgb(0x05, 0x96, 0x69));
+                MonitorDot.Background = new SolidColorBrush(ClrSuccess);
+                LblMonitorStatus.Text = "Not detected";
+                LblMonitorStatus.Foreground = new SolidColorBrush(ClrSuccess);
             }
-            UpdateExecuteButtons();
+            UpdateButtons();
         }
 
-        private void UpdateExecuteButtons()
+        private void UpdateButtons()
         {
-            bool canExecute = _viewModel.CanExecute;
-            BtnExecuteSelected.IsEnabled = canExecute;
-            BtnExecuteAll.IsEnabled = canExecute;
+            bool can = _viewModel.CanExecute;
+            BtnExecuteSelected.IsEnabled = can;
+            BtnExecuteAll.IsEnabled = can;
         }
 
-        // ===== CLEANUP =====
         protected override void OnClosed(EventArgs e)
         {
             _viewModel.Dispose();
