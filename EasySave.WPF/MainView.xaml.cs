@@ -351,7 +351,7 @@ namespace EasySave.WPF
 
         private void TxtEncryptionKey_LostFocus(object sender, RoutedEventArgs e)
         {
-            if (_viewModel != null && !string.IsNullOrWhiteSpace(TxtEncryptionKey.Text))
+            if (_viewModel != null)
             {
                 _viewModel.EncryptionKey = TxtEncryptionKey.Text.Trim();
             }
@@ -359,7 +359,7 @@ namespace EasySave.WPF
 
         private void TxtEncryptionExtensions_LostFocus(object sender, RoutedEventArgs e)
         {
-            if (_viewModel != null && !string.IsNullOrWhiteSpace(TxtEncryptionExtensions.Text))
+            if (_viewModel != null)
             {
                 _viewModel.EncryptionExtensionsText = TxtEncryptionExtensions.Text.Trim();
             }
