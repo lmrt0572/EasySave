@@ -101,11 +101,19 @@ namespace EasySave.Core.ViewModels
             }
         }
 
-        // ===== LOG FORMAT =====
+        // ===== LOG FORMAT (synced with EasyLog.LogService) =====
         public string LogFormat
         {
             get => _logFormat;
-            set { _logFormat = value; SaveConfig(); OnPropertyChanged(); }
+            set
+            {
+                string normalized = NormalizeLogFormatString(value);
+                if (_logFormat == normalized) return;
+                _logFormat = normalized;
+                LogService.Instance.SetLogFormat(ToLogFormat(_logFormat));
+                SaveConfig();
+                OnPropertyChanged();
+            }
         }
 
         // ===== PROGRESS PROPERTIES =====
@@ -409,7 +417,12 @@ namespace EasySave.Core.ViewModels
         // ===== PERSISTENCE =====
         private void LoadConfig()
         {
-            if (!File.Exists(_configPath)) { _jobs = new List<BackupJob>(); return; }
+            if (!File.Exists(_configPath))
+            {
+                _jobs = new List<BackupJob>();
+                SyncLogServiceFormat();
+                return;
+            }
             try
             {
                 var configDto = JsonSerializer.Deserialize<AppConfigDto>(File.ReadAllText(_configPath));
@@ -418,13 +431,36 @@ namespace EasySave.Core.ViewModels
                     _encryptionKey = configDto.EncryptionKey ?? "Prosoft123";
                     _encryptionExtensions = configDto.EncryptionExtensions ?? new List<string> { ".txt", ".md", ".pdf" };
                     _businessSoftwareName = configDto.BusinessSoftwareName ?? "CalculatorApp";
-                    _logFormat = configDto.LogFormat ?? "json";
+                    _logFormat = NormalizeLogFormatString(configDto.LogFormat ?? "json");
                     _jobs = configDto.Jobs?.Select(dto => new BackupJob(
                         dto.Name ?? "", dto.SourceDirectory ?? "", dto.TargetDirectory ?? "", dto.Type
                     )).ToList() ?? new List<BackupJob>();
                 }
+                SyncLogServiceFormat();
             }
-            catch { _jobs = new List<BackupJob>(); }
+            catch
+            {
+                _jobs = new List<BackupJob>();
+                SyncLogServiceFormat();
+            }
+        }
+
+        private void SyncLogServiceFormat()
+        {
+            LogService.Instance.SetLogFormat(ToLogFormat(_logFormat));
+        }
+
+        private static string NormalizeLogFormatString(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return "json";
+            var v = value.Trim().ToLowerInvariant();
+            if (v == "xml" || v == "1") return "xml"; // "1" = Xml (enum value)
+            return "json"; // json, 0, or unknown
+        }
+
+        private static EasyLog.Models.LogFormat ToLogFormat(string normalized)
+        {
+            return normalized == "xml" ? EasyLog.Models.LogFormat.Xml : EasyLog.Models.LogFormat.Json;
         }
 
         private void SaveConfig()
