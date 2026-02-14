@@ -1,0 +1,36 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Style x:Key="InputStyle" TargetType="TextBox">
+        <Setter Property="Background" Value="#EBCFB8"/><Setter Property="Foreground" Value="#553f2a"/>
+        <Setter Property="BorderBrush" Value="#DBBFA0"/><Setter Property="BorderThickness" Value="0,0,0,2"/>
+        <Setter Property="Padding" Value="10,8"/><Setter Property="FontSize" Value="12"/>
+        <Setter Property="FontFamily" Value="Segoe UI"/><Setter Property="CaretBrush" Value="#a67847"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TextBox">
+                    <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="8"
+                            Padding="{TemplateBinding Padding}" BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}">
+                        <ScrollViewer x:Name="PART_ContentHost" Focusable="False"
+                                      HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsFocused" Value="True"><Setter TargetName="bd" Property="BorderBrush" Value="#a67847"/></Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="CardInputStyle" TargetType="TextBox" BasedOn="{StaticResource InputStyle}">
+        <Setter Property="Background" Value="#F5E6D3"/><Setter Property="BorderThickness" Value="1"/><Setter Property="Padding" Value="12,9"/>
+    </Style>
+
+    <Style x:Key="CardComboStyle" TargetType="ComboBox">
+        <Setter Property="Background" Value="#F5E6D3"/><Setter Property="Foreground" Value="#553f2a"/>
+        <Setter Property="BorderBrush" Value="#DBBFA0"/><Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Padding" Value="10,7"/><Setter Property="FontSize" Value="12"/><Setter Property="FontFamily" Value="Segoe UI"/>
+    </Style>
+
+</ResourceDictionary>
