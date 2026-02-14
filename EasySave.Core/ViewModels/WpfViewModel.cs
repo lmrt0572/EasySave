@@ -43,7 +43,7 @@ namespace EasySave.Core.ViewModels
         private string _progressText = string.Empty;
         private string _currentFileName = string.Empty;
 
-        private string _logFormat = "json";
+        private EasyLog.Models.LogFormat _logFormat = EasyLog.Models.LogFormat.Json;
 
         // ===== NOTIFICATION STATE =====
         private string _notificationMessage = string.Empty;
@@ -95,22 +95,22 @@ namespace EasySave.Core.ViewModels
             set
             {
                 _encryptionExtensions = value.Split(',', StringSplitOptions.RemoveEmptyEntries)
-                    .Select(e => e.Trim()).Where(e => !string.IsNullOrEmpty(e))
-                    .Select(e => e.StartsWith('.') ? e : "." + e).ToList();
+                    .Select(e => e.Trim().ToLowerInvariant()).Where(e => !string.IsNullOrEmpty(e))
+                    .Select(e => e.StartsWith('.') ? e : "." + e).Distinct().ToList();
                 UpdateEncryptionService(); SaveConfig(); OnPropertyChanged();
             }
         }
 
-        // ===== LOG FORMAT (synced with EasyLog.LogService) =====
+        // ===== LOG FORMAT (synced with EasyLog.LogService, same logic as Console) =====
         public string LogFormat
         {
-            get => _logFormat;
+            get => _logFormat == EasyLog.Models.LogFormat.Xml ? "xml" : "json";
             set
             {
-                string normalized = NormalizeLogFormatString(value);
-                if (_logFormat == normalized) return;
-                _logFormat = normalized;
-                LogService.Instance.SetLogFormat(ToLogFormat(_logFormat));
+                var newFormat = ParseLogFormat(value);
+                if (_logFormat == newFormat) return;
+                _logFormat = newFormat;
+                LogService.Instance.SetLogFormat(_logFormat);
                 SaveConfig();
                 OnPropertyChanged();
             }
@@ -414,53 +414,70 @@ namespace EasySave.Core.ViewModels
             }
         }
 
-        // ===== PERSISTENCE =====
+        // ===== PERSISTENCE (same logic as MainViewModel / EasySave.Console) =====
         private void LoadConfig()
         {
             if (!File.Exists(_configPath))
             {
                 _jobs = new List<BackupJob>();
-                SyncLogServiceFormat();
+                _logFormat = EasyLog.Models.LogFormat.Json;
+                LogService.Instance.SetLogFormat(_logFormat);
                 return;
             }
             try
             {
-                var configDto = JsonSerializer.Deserialize<AppConfigDto>(File.ReadAllText(_configPath));
-                if (configDto != null)
+                string json = File.ReadAllText(_configPath);
+                if (string.IsNullOrWhiteSpace(json))
                 {
-                    _encryptionKey = configDto.EncryptionKey ?? "Prosoft123";
-                    _encryptionExtensions = configDto.EncryptionExtensions ?? new List<string> { ".txt", ".md", ".pdf" };
-                    _businessSoftwareName = configDto.BusinessSoftwareName ?? "CalculatorApp";
-                    _logFormat = NormalizeLogFormatString(configDto.LogFormat ?? "json");
-                    _jobs = configDto.Jobs?.Select(dto => new BackupJob(
+                    _jobs = new List<BackupJob>();
+                    _logFormat = EasyLog.Models.LogFormat.Json;
+                    LogService.Instance.SetLogFormat(_logFormat);
+                    return;
+                }
+                json = json.TrimStart();
+
+                if (json.StartsWith("["))
+                {
+                    var jobDtos = JsonSerializer.Deserialize<List<BackupJobDto>>(json);
+                    _jobs = jobDtos?.Select(dto => new BackupJob(
                         dto.Name ?? "", dto.SourceDirectory ?? "", dto.TargetDirectory ?? "", dto.Type
                     )).ToList() ?? new List<BackupJob>();
+                    _encryptionKey = "Prosoft123";
+                    _encryptionExtensions = new List<string> { ".txt", ".md", ".pdf" };
+                    _businessSoftwareName = "CalculatorApp";
+                    _logFormat = EasyLog.Models.LogFormat.Json;
                 }
-                SyncLogServiceFormat();
+                else
+                {
+                    var configDto = JsonSerializer.Deserialize<AppConfigDto>(json);
+                    if (configDto != null)
+                    {
+                        _encryptionKey = configDto.EncryptionKey ?? "Prosoft123";
+                        _encryptionExtensions = configDto.EncryptionExtensions ?? new List<string> { ".txt", ".md", ".pdf" };
+                        _businessSoftwareName = configDto.BusinessSoftwareName ?? "CalculatorApp";
+                        _logFormat = configDto.LogFormat;
+                        _jobs = configDto.Jobs?.Select(dto => new BackupJob(
+                            dto.Name ?? "", dto.SourceDirectory ?? "", dto.TargetDirectory ?? "", dto.Type
+                        )).ToList() ?? new List<BackupJob>();
+                    }
+                    else
+                        _jobs = new List<BackupJob>();
+                }
+                LogService.Instance.SetLogFormat(_logFormat);
             }
             catch
             {
                 _jobs = new List<BackupJob>();
-                SyncLogServiceFormat();
+                _logFormat = EasyLog.Models.LogFormat.Json;
+                LogService.Instance.SetLogFormat(_logFormat);
             }
         }
 
-        private void SyncLogServiceFormat()
+        private static EasyLog.Models.LogFormat ParseLogFormat(string? value)
         {
-            LogService.Instance.SetLogFormat(ToLogFormat(_logFormat));
-        }
-
-        private static string NormalizeLogFormatString(string? value)
-        {
-            if (string.IsNullOrWhiteSpace(value)) return "json";
+            if (string.IsNullOrWhiteSpace(value)) return EasyLog.Models.LogFormat.Json;
             var v = value.Trim().ToLowerInvariant();
-            if (v == "xml" || v == "1") return "xml"; // "1" = Xml (enum value)
-            return "json"; // json, 0, or unknown
-        }
-
-        private static EasyLog.Models.LogFormat ToLogFormat(string normalized)
-        {
-            return normalized == "xml" ? EasyLog.Models.LogFormat.Xml : EasyLog.Models.LogFormat.Json;
+            return (v == "xml" || v == "1") ? EasyLog.Models.LogFormat.Xml : EasyLog.Models.LogFormat.Json;
         }
 
         private void SaveConfig()
@@ -499,13 +516,13 @@ namespace EasySave.Core.ViewModels
             _currentCts?.Dispose();
         }
 
-        // ===== CONFIG DTO =====
+        // ===== CONFIG DTO (shared structure with MainViewModel) =====
         private class AppConfigDto
         {
             public string? EncryptionKey { get; set; }
             public List<string>? EncryptionExtensions { get; set; }
             public string? BusinessSoftwareName { get; set; }
-            public string? LogFormat { get; set; }
+            public EasyLog.Models.LogFormat LogFormat { get; set; } = EasyLog.Models.LogFormat.Json;
             public List<BackupJobDto>? Jobs { get; set; }
         }
 

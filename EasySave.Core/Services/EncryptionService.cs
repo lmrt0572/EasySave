@@ -1,7 +1,8 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -29,8 +30,8 @@ namespace EasySave.Core.Services
         public bool IsExtensionTargeted(string filePath)
         {
             if (string.IsNullOrEmpty(filePath)) return false;
-            string ext = Path.GetExtension(filePath).ToLower();
-            return _targetedExtensions.Contains(ext);
+            string ext = Path.GetExtension(filePath);
+            return _targetedExtensions.Any(e => string.Equals((e ?? "").Trim(), ext, StringComparison.OrdinalIgnoreCase));
         }
 
         public async Task<int> EncryptAsync(string targetFilePath)

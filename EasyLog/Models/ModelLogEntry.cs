@@ -30,8 +30,10 @@ namespace EasyLog.Models
         [XmlElement("SourcePath", Order = 3)]
         public string SourcePath { get; set; } = string.Empty;
 
+        [XmlElement("TargetPath", Order = 4)]
         public string TargetPath { get; set; } = string.Empty;
 
+        [XmlElement("FileSize", Order = 5)]
         public long FileSize { get; set; }
 
         [XmlElement("TransferTimeMs", Order = 6)]
