@@ -5,10 +5,13 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
+using System.Windows.Media.Effects;
 using System.Windows.Shapes;
 using EasySave.Core.Models;
 using EasySave.Core.Models.Enums;
 using EasySave.Core.ViewModels;
+using Lang = EasySave.Core.Models.Enums.Language;
 
 namespace EasySave.WPF
 {
@@ -16,498 +19,460 @@ namespace EasySave.WPF
     {
         private readonly WpfViewModel _viewModel;
         private readonly LanguageManager _lang;
-        private readonly HashSet<BackupJob> _selectedJobs = new();
+        private string _currentPage = "Jobs";
+        private int _currentSettingsTab;
+        private BackupJob? _editingJob;
+        private int _currentThemeIndex;
 
-        // ═══ ACTIVE THEME (set by ApplyTheme) ═══
-        private ThemeDef _theme;
+        // ===== THEME DATA =====
+        private static readonly (string File, string Name, string Bg, string Sidebar, string Accent, string Border, string Text)[] Themes =
+        {
+            ("Styles/Themes/Theme_BeigeClassique.xaml", "Beige Classique", "#E7D3C1", "#553f2a", "#a67847", "#C9A882", "#553f2a"),
+            ("Styles/Themes/Theme_CaramelProfond.xaml", "Caramel Profond", "#DFC4A8", "#3E2415", "#B5651D", "#C4A07A", "#3E2415"),
+            ("Styles/Themes/Theme_IvoireCreme.xaml",    "Ivoire Crème",    "#F2ECE0", "#5C4033", "#8B6F4E", "#D4C8B4", "#4A3828"),
+            ("Styles/Themes/Theme_TerreCuite.xaml",     "Terre Cuite",     "#E0C0A0", "#6B3A20", "#C06030", "#C8A078", "#5A3018"),
+            ("Styles/Themes/Theme_ModeNuit.xaml",       "Mode Nuit",       "#1E1E2E", "#14101E", "#C99B6D", "#3E3E52", "#E0D8CC"),
+        };
 
-        // ═══ THEME DEFINITIONS ═══
-        private static readonly ThemeDef[] Themes = new[] {
+        // ===== PLAY BUTTON REFS (synced with CanExecute) =====
+        private readonly List<Button> _playButtons = new();
 
-    
-    // 4. SOFT WARM (Votre thème beige amélioré pour plus de douceur)
-    new ThemeDef(
-        Name: "Latte",
-        Bg: "#FDFBF7",
-        Sidebar: "#FFFFFF",
-        Text: "#4A4036",
-        Soft: "#75685B",
-        Muted: "#B8B0A6",
-        Accent: "#D4A373",      // Caramel
-        AccentHover: "#B0855A",
-        BorderSoft: "#EAE5DF",
-        Border: "#DED6CC",
-        Hover: "#FAF7F2",
-        Select: "#F0EBE4",
-        Success: "#8A9A5B",     // Vert sauge
-        Danger: "#C87566",      // Terracotta
-        GradEnd: "#E6C9A8"
-    ),
+        // ===== DASHBOARD FIELD REFS =====
+        private TextBlock _dashTotalLabel = null!, _dashTotalValue = null!;
+        private TextBlock _dashStatusLabel = null!, _dashStatusValue = null!;
+        private TextBlock _dashLogLabel = null!, _dashLogValue = null!;
+        private TextBlock _dashEncLabel = null!, _dashEncValue = null!;
+        private Ellipse _dashStatusDot = null!;
 
-    // 5. SOFT STONE (Mode sombre gris & beige, sans tons marrons)
-    new ThemeDef(
-        Name: "Soft Stone",
-        Bg: "#1A1B1E",          // Gris anthracite très sombre
-        Sidebar: "#25262B",     // Gris ardoise (panneaux)
-        Text: "#E9E5D9",        // Beige très clair (texte)
-        Soft: "#A6A69F",        // Gris chaud (chemins de fichiers)
-        Muted: "#70716B",       // Gris moyen (labels)
-        Accent: "#D1C7B7",      // Beige sable (accentuation)
-        AccentHover: "#F0EBE3", // Beige éclatant au survol
-        BorderSoft: "#2C2D33",  // Bordures sombres
-        Border: "#373940",      // Séparateurs
-        Hover: "#2C2E33",       // Survol de ligne
-        Select: "#3F414A",      // Sélection
-        Success: "#9DBEBB",     // Gris-bleu/vert d'eau (discret)
-        Danger: "#E29595",      // Rose poudré (pour les erreurs)
-        GradEnd: "#5C5E66"      // Dégradé vers gris neutre
-    ),
-
-};
-
-        // ═══ CONSTRUCTOR ═══
         public MainView()
         {
             InitializeComponent();
-
             _lang = new LanguageManager();
             _viewModel = new WpfViewModel(_lang);
-            _theme = Themes[0]; // default beige
 
-            _viewModel.PropertyChanged += (s, e) =>
+            _viewModel.PropertyChanged += (s, e) => Dispatcher.Invoke(() =>
             {
-                Dispatcher.Invoke(() =>
+                switch (e.PropertyName)
                 {
-                    switch (e.PropertyName)
-                    {
-                        case nameof(WpfViewModel.StatusMessage): TxtStatus.Text = _viewModel.StatusMessage; break;
-                        case nameof(WpfViewModel.IsBusinessSoftwareDetected): UpdateWarning(); break;
-                        case nameof(WpfViewModel.CanExecute): UpdateButtons(); break;
-                        case nameof(WpfViewModel.IsExecuting):
-                            ProgressPanel.Visibility = _viewModel.IsExecuting ? Visibility.Visible : Visibility.Collapsed;
-                            break;
-                        case nameof(WpfViewModel.ProgressPercent): UpdateProgress(); break;
-                        case nameof(WpfViewModel.ProgressText): TxtProgressFiles.Text = _viewModel.ProgressText; break;
-                        case nameof(WpfViewModel.CurrentJobName): TxtProgressJob.Text = _viewModel.CurrentJobName; break;
-                        case nameof(WpfViewModel.CurrentFileName): TxtProgressFile.Text = _viewModel.CurrentFileName; break;
-                    }
-                });
-            };
+                    case nameof(WpfViewModel.StatusMessage): TxtStatus.Text = _viewModel.StatusMessage; break;
+                    case nameof(WpfViewModel.IsBusinessSoftwareDetected):
+                        UpdateWarning(); UpdateDashboard();
+                        if (_viewModel.IsBusinessSoftwareDetected) ProgressPanel.Visibility = Visibility.Collapsed;
+                        break;
+                    case nameof(WpfViewModel.CanExecute): BtnExecuteAll.IsEnabled = _viewModel.CanExecute; SyncPlayButtons(); break;
+                    case nameof(WpfViewModel.IsExecuting):
+                        ProgressPanel.Visibility = _viewModel.IsExecuting ? Visibility.Visible : Visibility.Collapsed;
+                        SyncPlayButtons(); break;
+                    case nameof(WpfViewModel.ProgressPercent): UpdateProgress(); break;
+                    case nameof(WpfViewModel.ProgressText): TxtProgressFiles.Text = _viewModel.ProgressText; break;
+                    case nameof(WpfViewModel.CurrentJobName): TxtProgressJob.Text = _viewModel.CurrentJobName; break;
+                    case nameof(WpfViewModel.CurrentFileName): TxtProgressFile.Text = _viewModel.CurrentFileName; break;
+                    case nameof(WpfViewModel.IsNotificationVisible):
+                        if (_viewModel.IsNotificationVisible) ShowNotificationToast(); else HideNotificationToast(); break;
+                    case nameof(WpfViewModel.NotificationMessage): NotifText.Text = _viewModel.NotificationMessage; break;
+                    case nameof(WpfViewModel.NotificationType): UpdateNotificationStyle(); break;
+                }
+            });
 
             TxtBusinessSoftware.Text = _viewModel.BusinessSoftwareName;
             TxtEncryptionKey.Text = _viewModel.EncryptionKey;
             TxtEncryptionExtensions.Text = _viewModel.EncryptionExtensionsText;
 
             BuildThemeSwatches();
-            ApplyTheme(Themes[0]);
+            BuildDashboardCards();
+            SetActiveNav("Jobs");
+            SetActiveSettingsTab(0);
+            UpdateLogFormatButtons();
+            UpdateLanguageButtons();
+            UpdateThemeSelection();
             ApplyTranslations();
             RefreshJobList();
             UpdateWarning();
-            UpdateButtons();
+            UpdateDashboard();
+            BtnExecuteAll.IsEnabled = _viewModel.CanExecute;
         }
 
-        // ═══════════════════════════════════════════
-        // ═══  THEME SYSTEM
-        // ═══════════════════════════════════════════
+        // ===== NAVIGATION =====
+        private void BtnNavJobs_Click(object s, RoutedEventArgs e) => SetActiveNav("Jobs");
+        private void BtnNavDashboard_Click(object s, RoutedEventArgs e) { UpdateDashboard(); SetActiveNav("Dashboard"); }
+        private void BtnNavSettings_Click(object s, RoutedEventArgs e) => SetActiveNav("Settings");
+
+        private void SetActiveNav(string page)
+        {
+            _currentPage = page;
+            JobsPage.Visibility = page == "Jobs" ? Visibility.Visible : Visibility.Collapsed;
+            DashboardPage.Visibility = page == "Dashboard" ? Visibility.Visible : Visibility.Collapsed;
+            SettingsPage.Visibility = page == "Settings" ? Visibility.Visible : Visibility.Collapsed;
+
+            var (a, t, m) = (TC("AccentPrimary", "#a67847"), TC("TextOnAccent", "#F5E6D3"), TC("TextOnDarkMuted", "#B8A08A"));
+            foreach (var (btn, p) in new[] { (BtnNavJobs, "Jobs"), (BtnNavDashboard, "Dashboard"), (BtnNavSettings, "Settings") })
+            { btn.Background = p == page ? B(a) : Brushes.Transparent; btn.Foreground = B(p == page ? t : m); }
+        }
+
+        // ===== SETTINGS TABS =====
+        private void BtnTabGeneral_Click(object s, RoutedEventArgs e) => SetActiveSettingsTab(0);
+        private void BtnTabLogs_Click(object s, RoutedEventArgs e) => SetActiveSettingsTab(1);
+        private void BtnTabLanguage_Click(object s, RoutedEventArgs e) => SetActiveSettingsTab(2);
+        private void BtnTabTheme_Click(object s, RoutedEventArgs e) => SetActiveSettingsTab(3);
+
+        private void SetActiveSettingsTab(int idx)
+        {
+            _currentSettingsTab = idx;
+            TabGeneralContent.Visibility = idx == 0 ? Visibility.Visible : Visibility.Collapsed;
+            TabLogsContent.Visibility = idx == 1 ? Visibility.Visible : Visibility.Collapsed;
+            TabLanguageContent.Visibility = idx == 2 ? Visibility.Visible : Visibility.Collapsed;
+            TabThemeContent.Visibility = idx == 3 ? Visibility.Visible : Visibility.Collapsed;
+
+            var (a, t, m) = (TC("AccentPrimary", "#a67847"), TC("TextOnAccent", "#F5E6D3"), TC("TextMuted", "#9C8468"));
+            foreach (var (btn, i) in new[] { (BtnTabGeneral, 0), (BtnTabLogs, 1), (BtnTabLanguage, 2), (BtnTabTheme, 3) })
+            { btn.Background = i == idx ? B(a) : Brushes.Transparent; btn.Foreground = B(i == idx ? t : m); }
+        }
+
+        // ===== THEME SWITCHING =====
+        private void ThemeSwatch_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is Border bd && bd.Tag is int idx) ApplyTheme(idx);
+        }
+
+        private void ApplyTheme(int idx)
+        {
+            if (idx < 0 || idx >= Themes.Length) return;
+            _currentThemeIndex = idx;
+            var dicts = Application.Current.Resources.MergedDictionaries;
+            var theme = new ResourceDictionary { Source = new Uri(Themes[idx].File, UriKind.Relative) };
+            if (dicts.Count > 0) dicts[0] = theme; else dicts.Insert(0, theme);
+
+            UpdateThemeSelection(); SetActiveNav(_currentPage); SetActiveSettingsTab(_currentSettingsTab);
+            UpdateLogFormatButtons(); UpdateLanguageButtons(); RefreshJobList();
+            UpdateWarning(); UpdateDashboard(); UpdateProgressGradient();
+            TxtCurrentTheme.Text = $"Active: {Themes[idx].Name}";
+            _viewModel.ShowNotification($"Theme: {Themes[idx].Name}", "success");
+        }
 
         private void BuildThemeSwatches()
         {
-            ThemePanel.Children.Clear();
-            foreach (var t in Themes)
+            for (int i = 0; i < Themes.Length; i++)
             {
+                var t = Themes[i];
+                var dots = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 0, 0, 6) };
+                dots.Children.Add(new Ellipse { Width = 20, Height = 20, Fill = B(t.Bg), Stroke = B(t.Border), StrokeThickness = 1 });
+                dots.Children.Add(new Ellipse { Width = 20, Height = 20, Fill = B(t.Sidebar), Margin = new Thickness(3, 0, 0, 0) });
+                dots.Children.Add(new Ellipse { Width = 20, Height = 20, Fill = B(t.Accent), Margin = new Thickness(3, 0, 0, 0) });
+
+                var label = new TextBlock { Text = t.Name, FontSize = 10, FontWeight = FontWeights.SemiBold, Foreground = B(t.Text), HorizontalAlignment = HorizontalAlignment.Center };
+                var inner = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center };
+                inner.Children.Add(dots); inner.Children.Add(label);
+
                 var swatch = new Border
                 {
-                    Width = 24,
-                    Height = 24,
-                    CornerRadius = new CornerRadius(12),
-                    Background = new SolidColorBrush(C(t.Accent)),
-                    Margin = new Thickness(0, 0, 6, 6),
-                    Cursor = Cursors.Hand,
-                    BorderThickness = new Thickness(2),
-                    BorderBrush = new SolidColorBrush(Colors.Transparent),
-                    ToolTip = t.Name
+                    Tag = i, Margin = new Thickness(0, 0, 10, 14), CornerRadius = new CornerRadius(12),
+                    Padding = new Thickness(12, 10, 12, 10), Cursor = Cursors.Hand, Width = 120,
+                    Background = B(t.Bg), BorderThickness = new Thickness(2), BorderBrush = Brushes.Transparent, Child = inner
                 };
-                var theme = t;
-                swatch.MouseLeftButtonDown += (s, e) => ApplyTheme(theme);
-                ThemePanel.Children.Add(swatch);
+                swatch.MouseLeftButtonDown += ThemeSwatch_Click;
+                ThemeSwatchPanel.Children.Add(swatch);
             }
         }
 
-        private void ApplyTheme(ThemeDef t)
+        private void UpdateThemeSelection()
         {
-            _theme = t;
-
-            // Window
-            RootWindow.Background = new SolidColorBrush(C(t.Bg));
-
-            // Sidebar
-            SidebarBorder.Background = new SolidColorBrush(C(t.Sidebar));
-            SidebarBorder.BorderBrush = new SolidColorBrush(C(t.Border));
-
-            // Logo
-            TxtLogo.Foreground = new SolidColorBrush(C(t.Text));
-            BadgeVersion.Background = new SolidColorBrush(C(t.Accent));
-            TxtSubtitle.Foreground = new SolidColorBrush(C(t.Muted));
-
-            // Section labels
-            foreach (var lbl in new[] { LblActions, LblSettings, LblTheme })
-                lbl.Foreground = new SolidColorBrush(C(t.Muted));
-
-            // Setting labels
-            foreach (var lbl in new[] { LblBusinessSoftware, LblEncryptionKey, LblEncryptionExtensions })
-                lbl.Foreground = new SolidColorBrush(C(t.Soft));
-
-            // Inputs sidebar
-            foreach (var tb in new[] { TxtBusinessSoftware, TxtEncryptionKey, TxtEncryptionExtensions })
-            {
-                tb.Foreground = new SolidColorBrush(C(t.Text));
-                tb.BorderBrush = new SolidColorBrush(C(t.BorderSoft));
-                tb.Background = new SolidColorBrush(C(t.Sidebar));
-                tb.CaretBrush = new SolidColorBrush(C(t.Accent));
-            }
-
-            // Separators
-            Sep1.Background = new SolidColorBrush(C(t.Border));
-
-            // Footer
-            TxtJobCount.Foreground = new SolidColorBrush(C(t.Muted));
-
-            // Main area
-            TxtNewJob.Foreground = new SolidColorBrush(C(t.Text));
-            TxtStatus.Foreground = new SolidColorBrush(C(t.Muted));
-
-            // Form labels
-            foreach (var lbl in new[] { LblFormName, LblFormSource, LblFormTarget, LblFormType })
-                lbl.Foreground = new SolidColorBrush(C(t.Muted));
-
-            // Form inputs
-            foreach (var tb in new[] { TxtName, TxtSource, TxtTarget })
-            {
-                tb.Foreground = new SolidColorBrush(C(t.Text));
-                tb.BorderBrush = new SolidColorBrush(C(t.BorderSoft));
-                tb.Background = new SolidColorBrush(C(t.Sidebar));
-                tb.CaretBrush = new SolidColorBrush(C(t.Accent));
-            }
-
-            // Progress
-            TxtProgressJob.Foreground = new SolidColorBrush(C(t.Text));
-            TxtProgressFiles.Foreground = new SolidColorBrush(C(t.Soft));
-            TxtProgressPct.Foreground = new SolidColorBrush(C(t.Accent));
-            ProgressTrack.Background = new SolidColorBrush(C(t.Border));
-            GradStart.Color = C(t.Accent);
-            GradEnd.Color = C(t.GradEnd);
-            TxtProgressFile.Foreground = new SolidColorBrush(C(t.Muted));
-
-            // Column headers
-            foreach (var col in new[] { ColName, ColSource, ColTarget, ColType })
-                col.Foreground = new SolidColorBrush(C(t.Muted));
-
-            // Swatch highlights
-            for (int i = 0; i < ThemePanel.Children.Count; i++)
-            {
-                if (ThemePanel.Children[i] is Border b)
-                    b.BorderBrush = new SolidColorBrush(Themes[i] == t ? C(t.Text) : Colors.Transparent);
-            }
-
-            // Re-render job list with new theme colors
-            RefreshJobList();
+            var accent = TC("AccentPrimary", "#a67847");
+            for (int i = 0; i < ThemeSwatchPanel.Children.Count; i++)
+                if (ThemeSwatchPanel.Children[i] is Border bd)
+                    bd.BorderBrush = i == _currentThemeIndex ? B(accent) : Brushes.Transparent;
+            TxtCurrentTheme.Text = $"Active: {Themes[_currentThemeIndex].Name}";
         }
 
-        // ═══════════════════════════════════════════
-        // ═══  TRANSLATIONS
-        // ═══════════════════════════════════════════
-
-        private void ApplyTranslations()
+        private void UpdateProgressGradient()
         {
-            // Sidebar
-            TxtSubtitle.Text = _lang.GetText("wpf_subtitle");
-            LblActions.Text = _lang.GetText("wpf_actions");
-            BtnExecuteAll.Content = _lang.GetText("wpf_execute_all");
-            BtnExecuteSelected.Content = _lang.GetText("wpf_execute_selected");
-            BtnDeleteSelected.Content = _lang.GetText("wpf_delete_selected");
-            LblSettings.Text = _lang.GetText("wpf_settings");
-            LblBusinessSoftware.Text = _lang.GetText("wpf_business_software");
-            LblEncryptionKey.Text = _lang.GetText("wpf_encryption_key");
-            LblEncryptionExtensions.Text = _lang.GetText("wpf_encryption_extensions");
-            LblTheme.Text = _lang.GetText("wpf_theme");
+            GradStart.Color = Cl(TC("AccentPrimary", "#a67847"));
+            GradEnd.Color = Cl(TC("AccentLight", "#C99B6D"));
+        }
 
-            // Monitor
-            if (!_viewModel.IsBusinessSoftwareDetected)
-                LblMonitorStatus.Text = _lang.GetText("wpf_monitor_not_detected");
-            else
-                LblMonitorStatus.Text = _lang.GetText("wpf_monitor_detected");
+        // ===== DASHBOARD (generated) =====
+        private void BuildDashboardCards()
+        {
+            var shadow = new Func<DropShadowEffect>(() => new DropShadowEffect { BlurRadius = 12, ShadowDepth = 2, Opacity = 0.06, Color = Cl("#553f2a") });
 
-            // Main area
-            TxtNewJob.Text = _lang.GetText("wpf_new_job");
-            LblFormName.Text = _lang.GetText("wpf_label_name");
-            LblFormSource.Text = _lang.GetText("wpf_label_source");
-            LblFormTarget.Text = _lang.GetText("wpf_label_target");
-            LblFormType.Text = _lang.GetText("wpf_label_type");
-            BtnCreate.Content = _lang.GetText("wpf_btn_add");
+            Border MakeCard(UIElement content) => new()
+            {
+                Background = B(TC("BgCard", "#F2E0CE")), CornerRadius = new CornerRadius(14),
+                Padding = new Thickness(24, 20, 24, 20), Margin = new Thickness(0, 0, 16, 16),
+                MinWidth = 200, Effect = shadow(), Child = content
+            };
 
-            // Column headers
-            ColName.Text = _lang.GetText("wpf_col_name");
-            ColSource.Text = _lang.GetText("wpf_col_source");
-            ColTarget.Text = _lang.GetText("wpf_col_target");
-            ColType.Text = _lang.GetText("wpf_col_type");
+            // Total Jobs
+            var sp1 = new StackPanel();
+            _dashTotalLabel = new TextBlock { Text = "Total Jobs", Foreground = B(TC("TextMuted", "#9C8468")), FontSize = 11, FontWeight = FontWeights.SemiBold };
+            _dashTotalValue = new TextBlock { Text = "0", FontSize = 32, FontWeight = FontWeights.Bold, Foreground = B(TC("TextPrimary", "#553f2a")), Margin = new Thickness(0, 4, 0, 0) };
+            sp1.Children.Add(_dashTotalLabel); sp1.Children.Add(_dashTotalValue);
+            DashboardCards.Children.Add(MakeCard(sp1));
 
             // Status
-            TxtStatus.Text = _lang.GetText("wpf_ready");
-            TxtJobCount.Text = _lang.GetText("wpf_jobs_count", _viewModel.GetJobCount());
+            var sp2 = new StackPanel();
+            _dashStatusLabel = new TextBlock { Text = "System Status", Foreground = B(TC("TextMuted", "#9C8468")), FontSize = 11, FontWeight = FontWeights.SemiBold };
+            var statusRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 8, 0, 0) };
+            _dashStatusDot = new Ellipse { Width = 10, Height = 10, Fill = B("#5A7247"), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) };
+            _dashStatusValue = new TextBlock { Text = "Ready", FontSize = 14, FontWeight = FontWeights.SemiBold, Foreground = B(TC("TextPrimary", "#553f2a")) };
+            statusRow.Children.Add(_dashStatusDot); statusRow.Children.Add(_dashStatusValue);
+            sp2.Children.Add(_dashStatusLabel); sp2.Children.Add(statusRow);
+            DashboardCards.Children.Add(MakeCard(sp2));
+
+            // Log Format
+            var sp3 = new StackPanel();
+            _dashLogLabel = new TextBlock { Text = "Log Format", Foreground = B(TC("TextMuted", "#9C8468")), FontSize = 11, FontWeight = FontWeights.SemiBold };
+            _dashLogValue = new TextBlock { Text = "JSON", FontSize = 24, FontWeight = FontWeights.Bold, Foreground = B(TC("AccentPrimary", "#a67847")), Margin = new Thickness(0, 4, 0, 0) };
+            sp3.Children.Add(_dashLogLabel); sp3.Children.Add(_dashLogValue);
+            DashboardCards.Children.Add(MakeCard(sp3));
+
+            // Encryption
+            var sp4 = new StackPanel();
+            _dashEncLabel = new TextBlock { Text = "Encryption", Foreground = B(TC("TextMuted", "#9C8468")), FontSize = 11, FontWeight = FontWeights.SemiBold };
+            _dashEncValue = new TextBlock { Text = "Active", FontSize = 14, FontWeight = FontWeights.SemiBold, Foreground = B("#5A7247"), Margin = new Thickness(0, 8, 0, 0) };
+            sp4.Children.Add(_dashEncLabel); sp4.Children.Add(_dashEncValue);
+            DashboardCards.Children.Add(MakeCard(sp4));
         }
 
-        // ═══════════════════════════════════════════
-        // ═══  PROGRESS
-        // ═══════════════════════════════════════════
-
+        // ===== PROGRESS =====
         private void UpdateProgress()
         {
             int pct = _viewModel.ProgressPercent;
             TxtProgressPct.Text = $"{pct}%";
-            double parentWidth = ProgressFill.Parent is Border parent ? parent.ActualWidth : 500;
-            ProgressFill.Width = Math.Max(0, parentWidth * pct / 100.0);
+            double pw = ProgressFill.Parent is Border p ? p.ActualWidth : 500;
+            ProgressFill.Width = Math.Max(0, pw * pct / 100.0);
         }
 
-        // ═══════════════════════════════════════════
-        // ═══  JOB LIST
-        // ═══════════════════════════════════════════
-
+        // ===== JOB LIST =====
         private void RefreshJobList()
         {
             JobListPanel.Children.Clear();
-            _selectedJobs.Clear();
+            _playButtons.Clear();
             var jobs = _viewModel.Jobs;
+            var (tm, tml) = (TC("TextMuted", "#9C8468"), TC("TextOnDarkMuted", "#B8A08A"));
 
             if (jobs.Count == 0)
             {
-                JobListPanel.Children.Add(new TextBlock
-                {
-                    Text = _lang.GetText("no_jobs"),
-                    Foreground = new SolidColorBrush(C(_theme.Muted)),
-                    FontSize = 13,
-                    FontFamily = new FontFamily("Segoe UI"),
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    Margin = new Thickness(0, 48, 0, 0)
-                });
+                var ep = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 60, 0, 0) };
+                ep.Children.Add(new TextBlock { Text = _lang.GetText("jobs_empty"), Foreground = B(tm), FontSize = 15, FontWeight = FontWeights.SemiBold, HorizontalAlignment = HorizontalAlignment.Center });
+                ep.Children.Add(new TextBlock { Text = _lang.GetText("jobs_empty_desc"), Foreground = B(tml), FontSize = 12, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 4, 0, 0) });
+                JobListPanel.Children.Add(ep);
             }
             else
-            {
-                for (int i = 0; i < jobs.Count; i++)
-                    JobListPanel.Children.Add(CreateJobRow(jobs[i], i + 1, i == jobs.Count - 1));
-            }
+                for (int i = 0; i < jobs.Count; i++) JobListPanel.Children.Add(CreateJobCard(jobs[i]));
 
             TxtJobCount.Text = _lang.GetText("wpf_jobs_count", jobs.Count);
+            UpdateDashboard();
         }
 
-        private UIElement CreateJobRow(BackupJob job, int index, bool isLast)
+        private UIElement CreateJobCard(BackupJob job)
         {
-            var container = new StackPanel();
+            var (accent, bgCard, bgHover, tp, ts, tm) = (TC("AccentPrimary", "#a67847"), TC("BgCard", "#F2E0CE"), TC("BgInput", "#EBCFB8"),
+                TC("TextPrimary", "#553f2a"), TC("TextSecondary", "#7A6147"), TC("TextMuted", "#9C8468"));
             bool isFull = job.Type == BackupType.Full;
             string typeText = isFull ? _lang.GetText("type_full") : _lang.GetText("type_differential");
-            Color badgeColor = isFull ? C(_theme.Accent) : C(_theme.Success);
+            Color bc = isFull ? Cl(accent) : Cl(TC("StatusSuccess", "#5A7247"));
 
-            var grid = new Grid { Margin = new Thickness(12, 0, 12, 0) };
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(32) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.4, GridUnitType.Star) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.4, GridUnitType.Star) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(80) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(70) });
+            var card = new Border { Background = B(bgCard), CornerRadius = new CornerRadius(14), Padding = new Thickness(20, 16, 20, 16),
+                Margin = new Thickness(0, 0, 0, 12), Cursor = Cursors.Hand,
+                Effect = new DropShadowEffect { BlurRadius = 12, ShadowDepth = 2, Opacity = 0.06, Color = Cl(tp) } };
 
-            AddCell(grid, 0, index.ToString(), C(_theme.Muted), 11.5);
-            AddCell(grid, 1, job.Name, C(_theme.Text), 13, true);
-            AddCell(grid, 2, job.SourceDirectory, C(_theme.Soft), 11.5, false, true);
-            AddCell(grid, 3, job.TargetDirectory, C(_theme.Soft), 11.5, false, true);
+            var cg = new Grid();
+            cg.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            cg.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
-            // Type pill
-            var pill = new Border
-            {
-                Background = new SolidColorBrush(Color.FromArgb(0x18, badgeColor.R, badgeColor.G, badgeColor.B)),
-                CornerRadius = new CornerRadius(10),
-                Padding = new Thickness(8, 2, 8, 2),
-                VerticalAlignment = VerticalAlignment.Center,
-                HorizontalAlignment = HorizontalAlignment.Left,
-                Child = new TextBlock
-                {
-                    Text = typeText,
-                    Foreground = new SolidColorBrush(badgeColor),
-                    FontSize = 10.5,
-                    FontWeight = FontWeights.SemiBold,
-                    FontFamily = new FontFamily("Segoe UI")
-                }
-            };
-            Grid.SetColumn(pill, 4);
-            grid.Children.Add(pill);
+            // Top row
+            var top = new Grid();
+            top.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            top.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            top.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-            // Actions
-            var actions = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center };
+            var name = new TextBlock { Text = job.Name, FontSize = 14, FontWeight = FontWeights.SemiBold, Foreground = B(tp), VerticalAlignment = VerticalAlignment.Center };
+            Grid.SetColumn(name, 0); top.Children.Add(name);
 
-            var btnRun = new Button { Content = "▶", Style = (Style)FindResource("BtnIcon"), Foreground = new SolidColorBrush(C(_theme.Accent)), FontSize = 11, IsEnabled = _viewModel.CanExecute };
-            btnRun.Click += (s, e) => { e.Handled = true; ExecuteSingleJob(job); };
-            actions.Children.Add(btnRun);
+            var badge = new Border { Background = new SolidColorBrush(Color.FromArgb(0x20, bc.R, bc.G, bc.B)), CornerRadius = new CornerRadius(6),
+                Padding = new Thickness(10, 4, 10, 4), Margin = new Thickness(0, 0, 12, 0), VerticalAlignment = VerticalAlignment.Center,
+                Child = new TextBlock { Text = typeText, FontSize = 11, FontWeight = FontWeights.SemiBold, Foreground = new SolidColorBrush(bc) } };
+            Grid.SetColumn(badge, 1); top.Children.Add(badge);
 
-            var btnDel = new Button { Content = "✕", Style = (Style)FindResource("BtnIcon"), Foreground = new SolidColorBrush(C(_theme.Danger)), FontSize = 11 };
-            btnDel.Click += (s, e) => { e.Handled = true; _viewModel.DeleteJob(job); RefreshJobList(); };
-            actions.Children.Add(btnDel);
+            var acts = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+            var r = MkBtn("▶", accent, _viewModel.CanExecute); r.Click += (s, e) => { e.Handled = true; ExecuteSingleJob(job); }; _playButtons.Add(r); acts.Children.Add(r);
+            var ed = MkBtn("✏", ts, true); ed.Click += (s, e) => { e.Handled = true; StartEditJob(job); }; acts.Children.Add(ed);
+            var dl = MkBtn("✕", TC("StatusDanger", "#9B4D4D"), true); dl.Click += (s, e) => { e.Handled = true; DeleteJob(job); }; acts.Children.Add(dl);
+            Grid.SetColumn(acts, 2); top.Children.Add(acts);
+            Grid.SetRow(top, 0); cg.Children.Add(top);
 
-            Grid.SetColumn(actions, 5);
-            grid.Children.Add(actions);
+            // Info row
+            var info = new Grid { Margin = new Thickness(0, 10, 0, 0) };
+            info.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(55) });
+            info.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            info.RowDefinitions.Add(new RowDefinition()); info.RowDefinitions.Add(new RowDefinition());
+            AddCell(info, 0, 0, "Source", tm); AddCell(info, 0, 1, job.SourceDirectory, ts, true);
+            AddCell(info, 1, 0, "Target", tm); AddCell(info, 1, 1, job.TargetDirectory, ts, true);
+            Grid.SetRow(info, 1); cg.Children.Add(info);
 
-            var row = new Border
-            {
-                Background = Brushes.Transparent,
-                Padding = new Thickness(0, 10, 0, 10),
-                Child = grid,
-                Cursor = Cursors.Hand
-            };
-
-            var hoverBrush = new SolidColorBrush(C(_theme.Hover));
-            var selectBrush = new SolidColorBrush(C(_theme.Select));
-
-            row.MouseEnter += (s, e) => { if (!_selectedJobs.Contains(job)) row.Background = hoverBrush; };
-            row.MouseLeave += (s, e) => { if (!_selectedJobs.Contains(job)) row.Background = Brushes.Transparent; };
-            row.MouseLeftButtonDown += (s, e) =>
-            {
-                if (_selectedJobs.Contains(job)) { _selectedJobs.Remove(job); row.Background = Brushes.Transparent; }
-                else { _selectedJobs.Add(job); row.Background = selectBrush; }
-            };
-
-            container.Children.Add(row);
-
-            if (!isLast)
-                container.Children.Add(new Border { Height = 1, Background = new SolidColorBrush(C(_theme.Border)), Margin = new Thickness(12, 0, 12, 0) });
-
-            return container;
+            card.Child = cg;
+            card.MouseEnter += (s, e) => card.Background = B(bgHover);
+            card.MouseLeave += (s, e) => card.Background = B(bgCard);
+            return card;
         }
 
-        private void AddCell(Grid grid, int col, string text, Color color, double size, bool bold = false, bool trim = false)
+        private void AddCell(Grid g, int r, int c, string txt, string col, bool trim = false)
         {
-            var tb = new TextBlock { Text = text, Foreground = new SolidColorBrush(color), FontSize = size, FontFamily = new FontFamily("Segoe UI"), VerticalAlignment = VerticalAlignment.Center };
-            if (bold) tb.FontWeight = FontWeights.SemiBold;
+            var tb = new TextBlock { Text = txt, FontSize = 11, Foreground = B(col), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 1, 0, 1) };
             if (trim) tb.TextTrimming = TextTrimming.CharacterEllipsis;
-            Grid.SetColumn(tb, col);
-            grid.Children.Add(tb);
+            Grid.SetRow(tb, r); Grid.SetColumn(tb, c); g.Children.Add(tb);
         }
 
-        // ═══════════════════════════════════════════
-        // ═══  HANDLERS
-        // ═══════════════════════════════════════════
+        private Button MkBtn(string icon, string color, bool enabled) => new()
+        { Content = icon, Style = (Style)FindResource("BtnIcon"), Foreground = B(color), FontSize = 12, IsEnabled = enabled, Margin = new Thickness(2, 0, 2, 0) };
 
+        // ===== JOB EDIT =====
+        private void StartEditJob(BackupJob job)
+        {
+            _editingJob = job; TxtName.Text = job.Name; TxtSource.Text = job.SourceDirectory; TxtTarget.Text = job.TargetDirectory;
+            CmbType.SelectedIndex = job.Type == BackupType.Differential ? 1 : 0;
+            TxtCreateTitle.Text = _lang.GetText("jobs_edit_title"); BtnCreate.Content = _lang.GetText("wpf_btn_update"); SetActiveNav("Jobs");
+        }
+
+        private void ClearCreateForm()
+        {
+            TxtName.Clear(); TxtSource.Clear(); TxtTarget.Clear(); CmbType.SelectedIndex = 0; _editingJob = null;
+            TxtCreateTitle.Text = _lang.GetText("jobs_create_title"); BtnCreate.Content = _lang.GetText("wpf_btn_add");
+        }
+
+        // ===== EVENT HANDLERS =====
         private void BtnCreate_Click(object sender, RoutedEventArgs e)
         {
             string name = TxtName.Text.Trim(), source = TxtSource.Text.Trim(), target = TxtTarget.Text.Trim();
             int typeInput = CmbType.SelectedIndex == 1 ? 2 : 1;
             if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(source) || string.IsNullOrWhiteSpace(target))
-            { TxtStatus.Text = _lang.GetText("error_invalid_choice"); return; }
+            { _viewModel.ShowNotification(_lang.GetText("notif_fields_required"), "warning"); return; }
+            if (_editingJob != null) { _viewModel.DeleteJob(_editingJob); _editingJob = null; }
             if (_viewModel.CreateJob(name, source, target, typeInput))
-            { TxtName.Clear(); TxtSource.Clear(); TxtTarget.Clear(); CmbType.SelectedIndex = 0; RefreshJobList(); }
+            { ClearCreateForm(); RefreshJobList(); _viewModel.ShowNotification(_lang.GetText(_editingJob == null ? "notif_job_created" : "notif_job_updated"), "success"); }
+            else _viewModel.ShowNotification(_lang.GetText("error_invalid_choice"), "error");
         }
 
-        private async void BtnExecuteSelected_Click(object sender, RoutedEventArgs e)
+        private async void BtnExecuteAll_Click(object s, RoutedEventArgs e) { await Task.Run(() => _viewModel.ExecuteAllJobs()); Dispatcher.Invoke(RefreshJobList); }
+        private async void ExecuteSingleJob(BackupJob job) { await Task.Run(() => _viewModel.ExecuteJob(job)); Dispatcher.Invoke(RefreshJobList); }
+        private void DeleteJob(BackupJob job) { _viewModel.DeleteJob(job); RefreshJobList(); _viewModel.ShowNotification(_lang.GetText("notif_job_deleted"), "info"); }
+
+        // ===== LANGUAGE =====
+        private void BtnLangEn_Click(object s, RoutedEventArgs e) => SwitchLang(Lang.English);
+        private void BtnLangFr_Click(object s, RoutedEventArgs e) => SwitchLang(Lang.French);
+        private void BtnSettingsLangEn_Click(object s, RoutedEventArgs e) => SwitchLang(Lang.English);
+        private void BtnSettingsLangFr_Click(object s, RoutedEventArgs e) => SwitchLang(Lang.French);
+
+        private void SwitchLang(Lang lang)
         {
-            if (_selectedJobs.Count == 0) { TxtStatus.Text = _lang.GetText("error_job_not_found"); return; }
-            foreach (var job in new List<BackupJob>(_selectedJobs))
-                await Task.Run(() => _viewModel.ExecuteJob(job));
-            RefreshJobList();
+            _viewModel.SetLanguage(lang); ApplyTranslations(); RefreshJobList(); UpdateLanguageButtons(); UpdateDashboard();
+            _viewModel.ShowNotification(_lang.GetText("notif_language_changed"), "success");
         }
 
-        private async void BtnExecuteAll_Click(object sender, RoutedEventArgs e)
+        private void UpdateLanguageButtons()
         {
-            await Task.Run(() => _viewModel.ExecuteAllJobs());
-            RefreshJobList();
+            bool en = _lang.GetCurrentLanguage() == Lang.English;
+            var (td, tm, a, ta, tmu) = (TC("TextOnDark", "#E7D3C1"), TC("TextOnDarkMuted", "#B8A08A"), TC("AccentPrimary", "#a67847"), TC("TextOnAccent", "#F5E6D3"), TC("TextMuted", "#9C8468"));
+            BtnLangEn.Foreground = B(en ? td : tm); BtnLangEn.FontWeight = en ? FontWeights.Bold : FontWeights.SemiBold;
+            BtnLangFr.Foreground = B(!en ? td : tm); BtnLangFr.FontWeight = !en ? FontWeights.Bold : FontWeights.SemiBold;
+            BtnSettingsLangEn.Background = B(en ? a : "Transparent"); BtnSettingsLangEn.Foreground = B(en ? ta : tmu);
+            BtnSettingsLangFr.Background = B(!en ? a : "Transparent"); BtnSettingsLangFr.Foreground = B(!en ? ta : tmu);
         }
 
-        private void BtnDeleteSelected_Click(object sender, RoutedEventArgs e)
+        // ===== LOG FORMAT =====
+        private void BtnLogJson_Click(object s, RoutedEventArgs e) { _viewModel.LogFormat = "json"; UpdateLogFormatButtons(); UpdateDashboard(); _viewModel.ShowNotification(_lang.GetText("notif_settings_saved"), "success"); }
+        private void BtnLogXml_Click(object s, RoutedEventArgs e) { _viewModel.LogFormat = "xml"; UpdateLogFormatButtons(); UpdateDashboard(); _viewModel.ShowNotification(_lang.GetText("notif_settings_saved"), "success"); }
+
+        private void UpdateLogFormatButtons()
         {
-            if (_selectedJobs.Count == 0) { TxtStatus.Text = _lang.GetText("error_job_not_found"); return; }
-            foreach (var job in new List<BackupJob>(_selectedJobs)) _viewModel.DeleteJob(job);
-            RefreshJobList();
+            bool j = _viewModel.LogFormat == "json";
+            var (a, ta, tm) = (TC("AccentPrimary", "#a67847"), TC("TextOnAccent", "#F5E6D3"), TC("TextMuted", "#9C8468"));
+            BtnLogJson.Background = B(j ? a : "Transparent"); BtnLogJson.Foreground = B(j ? ta : tm);
+            BtnLogXml.Background = B(!j ? a : "Transparent"); BtnLogXml.Foreground = B(!j ? ta : tm);
         }
 
-        private async void ExecuteSingleJob(BackupJob job)
+        // ===== SETTINGS HANDLERS =====
+        private void TxtBusinessSoftware_TextChanged(object s, TextChangedEventArgs e) { if (_viewModel != null) _viewModel.BusinessSoftwareName = TxtBusinessSoftware.Text.Trim(); }
+        private void TxtEncryptionKey_LostFocus(object s, RoutedEventArgs e) { if (_viewModel != null && !string.IsNullOrWhiteSpace(TxtEncryptionKey.Text)) _viewModel.EncryptionKey = TxtEncryptionKey.Text.Trim(); }
+        private void TxtEncryptionExtensions_LostFocus(object s, RoutedEventArgs e) { if (_viewModel != null && !string.IsNullOrWhiteSpace(TxtEncryptionExtensions.Text)) _viewModel.EncryptionExtensionsText = TxtEncryptionExtensions.Text.Trim(); }
+
+        // ===== TRANSLATIONS =====
+        private void ApplyTranslations()
         {
-            await Task.Run(() => _viewModel.ExecuteJob(job));
-            Dispatcher.Invoke(RefreshJobList);
+            TxtSubtitle.Text = _lang.GetText("wpf_subtitle");
+            BtnNavJobs.Content = _lang.GetText("nav_jobs"); BtnNavDashboard.Content = _lang.GetText("nav_dashboard"); BtnNavSettings.Content = _lang.GetText("nav_settings");
+            TxtJobsTitle.Text = _lang.GetText("jobs_title"); BtnExecuteAll.Content = _lang.GetText("wpf_execute_all");
+            if (_editingJob == null) { TxtCreateTitle.Text = _lang.GetText("jobs_create_title"); BtnCreate.Content = _lang.GetText("wpf_btn_add"); }
+            LblFormName.Text = _lang.GetText("wpf_label_name"); LblFormSource.Text = _lang.GetText("wpf_label_source");
+            LblFormTarget.Text = _lang.GetText("wpf_label_target"); LblFormType.Text = _lang.GetText("wpf_label_type");
+            TxtStatus.Text = _lang.GetText("wpf_ready"); TxtJobCount.Text = _lang.GetText("wpf_jobs_count", _viewModel.GetJobCount());
+            TxtDashboardTitle.Text = _lang.GetText("dashboard_title");
+            _dashTotalLabel.Text = _lang.GetText("dashboard_total_jobs"); _dashStatusLabel.Text = _lang.GetText("dashboard_status");
+            _dashLogLabel.Text = _lang.GetText("dashboard_log_format"); _dashEncLabel.Text = _lang.GetText("dashboard_encryption");
+            _dashEncValue.Text = _lang.GetText("dashboard_active");
+            TxtSettingsTitle.Text = _lang.GetText("nav_settings");
+            BtnTabGeneral.Content = _lang.GetText("settings_tab_general"); BtnTabLogs.Content = _lang.GetText("settings_tab_logs");
+            BtnTabLanguage.Content = _lang.GetText("settings_tab_language"); BtnTabTheme.Content = _lang.GetText("settings_tab_theme");
+            LblSettingsBusiness.Text = _lang.GetText("settings_business_software"); LblSettingsBusinessDesc.Text = _lang.GetText("settings_business_desc");
+            LblSettingsEncryption.Text = _lang.GetText("settings_encryption"); LblSettingsEncKey.Text = _lang.GetText("settings_encryption_key");
+            LblSettingsEncExt.Text = _lang.GetText("settings_encryption_ext"); LblSettingsLogFormat.Text = _lang.GetText("settings_log_format");
+            LblSettingsLogDesc.Text = _lang.GetText("settings_log_desc"); LblSettingsLangTitle.Text = _lang.GetText("settings_language_title");
+            LblSettingsLangDesc.Text = _lang.GetText("settings_language_desc"); LblSettingsThemeTitle.Text = _lang.GetText("settings_theme_title");
+            LblSettingsThemeDesc.Text = _lang.GetText("settings_theme_desc");
+            UpdateWarning();
         }
 
-        // ═══ LANGUAGE ═══
-
-        private void BtnLangEn_Click(object sender, RoutedEventArgs e)
+        // ===== DASHBOARD =====
+        private void UpdateDashboard()
         {
-            _viewModel.SetLanguage(EasySave.Core.Models.Enums.Language.English);
-            ApplyTranslations();
-            RefreshJobList();
+            _dashTotalValue.Text = _viewModel.GetJobCount().ToString();
+            _dashLogValue.Text = _viewModel.LogFormat.ToUpper();
+            var (sd, ss, tp) = (TC("StatusDanger", "#9B4D4D"), TC("StatusSuccess", "#5A7247"), TC("TextPrimary", "#553f2a"));
+            if (_viewModel.IsBusinessSoftwareDetected)
+            { _dashStatusDot.Fill = B(sd); _dashStatusValue.Text = _lang.GetText("dashboard_blocked"); _dashStatusValue.Foreground = B(sd); }
+            else
+            { _dashStatusDot.Fill = B(ss); _dashStatusValue.Text = _lang.GetText("dashboard_ready"); _dashStatusValue.Foreground = B(tp); }
         }
 
-        private void BtnLangFr_Click(object sender, RoutedEventArgs e)
-        {
-            _viewModel.SetLanguage(EasySave.Core.Models.Enums.Language.French);
-            ApplyTranslations();
-            RefreshJobList();
-        }
-
-        // ═══ SETTINGS ═══
-
-        private void TxtBusinessSoftware_TextChanged(object sender, TextChangedEventArgs e)
-        { if (_viewModel != null) _viewModel.BusinessSoftwareName = TxtBusinessSoftware.Text.Trim(); }
-
-        private void TxtEncryptionKey_LostFocus(object sender, RoutedEventArgs e)
-        { if (_viewModel != null && !string.IsNullOrWhiteSpace(TxtEncryptionKey.Text)) _viewModel.EncryptionKey = TxtEncryptionKey.Text.Trim(); }
-
-        private void TxtEncryptionExtensions_LostFocus(object sender, RoutedEventArgs e)
-        { if (_viewModel != null && !string.IsNullOrWhiteSpace(TxtEncryptionExtensions.Text)) _viewModel.EncryptionExtensionsText = TxtEncryptionExtensions.Text.Trim(); }
-
-        // ═══ UI STATE ═══
-
+        // ===== WARNING =====
         private void UpdateWarning()
         {
+            var (sd, ss) = (TC("StatusDanger", "#9B4D4D"), TC("StatusSuccess", "#5A7247"));
             if (_viewModel.IsBusinessSoftwareDetected)
-            {
-                WarningBanner.Visibility = Visibility.Visible;
-                WarningText.Text = "⚠ " + _lang.GetText("error_business_software");
-                MonitorDot.Fill = new SolidColorBrush(C(_theme.Danger));
-                LblMonitorStatus.Text = _lang.GetText("wpf_monitor_detected");
-                LblMonitorStatus.Foreground = new SolidColorBrush(C(_theme.Danger));
-            }
+            { WarningBanner.Visibility = Visibility.Visible; WarningText.Text = _lang.GetText("error_business_software"); MonitorDot.Fill = B(sd); LblMonitorStatus.Text = _lang.GetText("wpf_monitor_detected"); LblMonitorStatus.Foreground = B(sd); }
             else
-            {
-                WarningBanner.Visibility = Visibility.Collapsed;
-                MonitorDot.Fill = new SolidColorBrush(C(_theme.Success));
-                LblMonitorStatus.Text = _lang.GetText("wpf_monitor_not_detected");
-                LblMonitorStatus.Foreground = new SolidColorBrush(C(_theme.Success));
-            }
-            UpdateButtons();
+            { WarningBanner.Visibility = Visibility.Collapsed; MonitorDot.Fill = B(ss); LblMonitorStatus.Text = _lang.GetText("wpf_monitor_not_detected"); LblMonitorStatus.Foreground = B(ss); }
         }
 
-        private void UpdateButtons()
+        // ===== NOTIFICATION =====
+        private void ShowNotificationToast()
         {
-            bool can = _viewModel.CanExecute;
-            BtnExecuteSelected.IsEnabled = can;
-            BtnExecuteAll.IsEnabled = can;
+            UpdateNotificationStyle(); NotifText.Text = _viewModel.NotificationMessage;
+            NotificationToast.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(250)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
         }
+        private void HideNotificationToast() =>
+            NotificationToast.BeginAnimation(OpacityProperty, new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(300)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn } });
+
+        private void UpdateNotificationStyle()
+        {
+            var (d, bg) = _viewModel.NotificationType switch
+            {
+                "success" => (TC("StatusSuccess", "#5A7247"), TC("StatusSuccessBg", "#EFF5EB")),
+                "error" => (TC("StatusDanger", "#9B4D4D"), TC("StatusDangerBg", "#F5EDED")),
+                "warning" => (TC("StatusWarning", "#B8860B"), TC("StatusWarningBg", "#F5F0E0")),
+                _ => (TC("AccentPrimary", "#a67847"), TC("BgCard", "#F2E0CE"))
+            };
+            NotifDot.Fill = B(d); NotifBg.Color = Cl(bg);
+        }
+
+        // ===== PLAY BUTTON SYNC =====
+        private void SyncPlayButtons() { bool can = _viewModel.CanExecute; foreach (var btn in _playButtons) btn.IsEnabled = can; }
 
         protected override void OnClosed(EventArgs e) { _viewModel.Dispose(); base.OnClosed(e); }
 
-        // ═══ HELPER ═══
-        private static Color C(string hex) => (Color)ColorConverter.ConvertFromString(hex);
-
-        // ═══ THEME DEFINITION ═══
-        private record ThemeDef(
-            string Name,
-            string Bg,         // Window background
-            string Sidebar,    // Sidebar / cards / inputs background
-            string Text,       // Primary text
-            string Soft,       // Secondary text (paths, descriptions)
-            string Muted,      // Tertiary text (labels, headers)
-            string Accent,     // Primary accent (buttons, badges, active)
-            string AccentHover,// Accent hover state
-            string BorderSoft, // Input borders
-            string Border,     // Separators, card borders
-            string Hover,      // Row hover bg
-            string Select,     // Row selected bg
-            string Success,    // Green indicators
-            string Danger,     // Red indicators
-            string GradEnd     // Progress bar gradient end
-        );
+        // ===== HELPERS =====
+        private static SolidColorBrush B(string hex) => new((Color)ColorConverter.ConvertFromString(hex));
+        private static Color Cl(string hex) => (Color)ColorConverter.ConvertFromString(hex);
+        private static string TC(string key, string fb) => Application.Current.Resources[key] is SolidColorBrush b ? b.Color.ToString() : fb;
     }
 }

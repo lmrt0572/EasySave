@@ -1,0 +1,39 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ===== THEME: MODE NUIT ===== -->
+
+    <!-- Background -->
+    <SolidColorBrush x:Key="BgPrimary" Color="#1E1E2E"/>
+    <SolidColorBrush x:Key="BgSidebar" Color="#14101E"/>
+    <SolidColorBrush x:Key="BgCard" Color="#2A2A3E"/>
+    <SolidColorBrush x:Key="BgInput" Color="#2E2E42"/>
+    <SolidColorBrush x:Key="BgSidebarHover" Color="#2A2640"/>
+    <SolidColorBrush x:Key="BgSidebarActive" Color="#C99B6D"/>
+
+    <!-- Text -->
+    <SolidColorBrush x:Key="TextPrimary" Color="#E0D8CC"/>
+    <SolidColorBrush x:Key="TextSecondary" Color="#B8B0A0"/>
+    <SolidColorBrush x:Key="TextMuted" Color="#8A8478"/>
+    <SolidColorBrush x:Key="TextOnDark" Color="#E0D8CC"/>
+    <SolidColorBrush x:Key="TextOnDarkMuted" Color="#8A8478"/>
+    <SolidColorBrush x:Key="TextOnAccent" Color="#1E1E2E"/>
+
+    <!-- Accent -->
+    <SolidColorBrush x:Key="AccentPrimary" Color="#C99B6D"/>
+    <SolidColorBrush x:Key="AccentHover" Color="#A67847"/>
+    <SolidColorBrush x:Key="AccentLight" Color="#D4B48E"/>
+
+    <!-- Border -->
+    <SolidColorBrush x:Key="BorderDefault" Color="#3E3E52"/>
+    <SolidColorBrush x:Key="BorderLight" Color="#4A4A62"/>
+
+    <!-- Status -->
+    <SolidColorBrush x:Key="StatusSuccess" Color="#6B9B50"/>
+    <SolidColorBrush x:Key="StatusDanger" Color="#C45454"/>
+    <SolidColorBrush x:Key="StatusWarning" Color="#D4A020"/>
+    <SolidColorBrush x:Key="StatusSuccessBg" Color="#1E2E1E"/>
+    <SolidColorBrush x:Key="StatusDangerBg" Color="#2E1E1E"/>
+    <SolidColorBrush x:Key="StatusWarningBg" Color="#2E2A1E"/>
+
+</ResourceDictionary>
