@@ -24,7 +24,8 @@ namespace EasySave.Core.Models.Enums
                 ["menu_delete"] = new() { [Language.English] = "4. Delete backup job", [Language.French] = "4. Supprimer un travail" },
                 ["menu_settings"] = new() { [Language.English] = "5. Settings", [Language.French] = "5. Paramètres" },
                 ["menu_language"] = new() { [Language.English] = "6. Change language", [Language.French] = "6. Changer la langue" },
-                ["menu_quit"] = new() { [Language.English] = "7. Quit", [Language.French] = "7. Quitter" },
+                ["menu_log_format"] = new() { [Language.English] = "7. Change log format", [Language.French] = "7. Changer le format des logs" },
+                ["menu_quit"] = new() { [Language.English] = "8. Quit", [Language.French] = "8. Quitter" },
                 ["menu_choice"] = new() { [Language.English] = "Your choice: ", [Language.French] = "Votre choix : " },
 
                 // ===== CONFIRMATION MESSAGES =====
@@ -49,6 +50,17 @@ namespace EasySave.Core.Models.Enums
                 ["prompt_target"] = new() { [Language.English] = "Target directory: ", [Language.French] = "Répertoire cible : " },
                 ["prompt_type"] = new() { [Language.English] = "Type (1=Full, 2=Differential): ", [Language.French] = "Type (1=Complète, 2=Différentielle) : " },
                 ["prompt_job_index"] = new() { [Language.English] = "Job number: ", [Language.French] = "Numéro du travail : " },
+                ["prompt_log_format"] = new() { [Language.English] = "Choose format (1=JSON, 2=XML): ", [Language.French] = "Choisir le format (1=JSON, 2=XML) : " },
+
+                // ── Settings (Console) ──
+                ["settings_title"] = new() { [Language.English] = "=== Settings ===", [Language.French] = "=== Paramètres ===" },
+                ["settings_current_key"] = new() { [Language.English] = "Current encryption key: {0}", [Language.French] = "Clé de chiffrement actuelle : {0}" },
+                ["settings_prompt_key"] = new() { [Language.English] = "New key (Enter to keep): ", [Language.French] = "Nouvelle clé (Entrée pour garder) : " },
+                ["settings_current_extensions"] = new() { [Language.English] = "Current extensions: {0}", [Language.French] = "Extensions actuelles : {0}" },
+                ["settings_prompt_extensions"] = new() { [Language.English] = "New extensions (comma-separated, Enter to keep): ", [Language.French] = "Nouvelles extensions (séparées par virgules, Entrée pour garder) : " },
+                ["settings_current_software"] = new() { [Language.English] = "Current business software: {0}", [Language.French] = "Logiciel métier actuel : {0}" },
+                ["settings_prompt_software"] = new() { [Language.English] = "New software name (Enter to keep): ", [Language.French] = "Nouveau nom de logiciel (Entrée pour garder) : " },
+                ["settings_success"] = new() { [Language.English] = "Settings updated successfully", [Language.French] = "Paramètres mis à jour avec succès" },
 
                 // ===== STATUS =====
                 ["status_active"] = new() { [Language.English] = "Active", [Language.French] = "Actif" },
@@ -71,19 +83,18 @@ namespace EasySave.Core.Models.Enums
                 ["job_source"] = new() { [Language.English] = "Source: ", [Language.French] = "Source : " },
                 ["job_target"] = new() { [Language.English] = "Target: ", [Language.French] = "Cible : " },
                 ["job_type"] = new() { [Language.English] = "Type: ", [Language.French] = "Type : " },
-                ["press_any_key"] = new() { [Language.English] = "Press any key to continue...", [Language.French] = "Appuyez sur une touche..." },
 
-                // ===== CONSOLE SETTINGS =====
-                ["settings_title"] = new() { [Language.English] = "Settings", [Language.French] = "Paramètres" },
-                ["settings_success"] = new() { [Language.English] = "Settings saved", [Language.French] = "Paramètres sauvegardés" },
-                ["settings_current_key"] = new() { [Language.English] = "Current key: {0}", [Language.French] = "Clé actuelle : {0}" },
-                ["settings_prompt_key"] = new() { [Language.English] = "New key (enter to keep): ", [Language.French] = "Nouvelle clé (entrée pour garder) : " },
-                ["settings_current_extensions"] = new() { [Language.English] = "Current extensions: {0}", [Language.French] = "Extensions actuelles : {0}" },
-                ["settings_prompt_extensions"] = new() { [Language.English] = "New extensions (enter to keep): ", [Language.French] = "Nouvelles extensions (entrée pour garder) : " },
-                ["settings_current_software"] = new() { [Language.English] = "Current software: {0}", [Language.French] = "Logiciel actuel : {0}" },
-                ["settings_prompt_software"] = new() { [Language.English] = "New software name (enter to keep): ", [Language.French] = "Nouveau logiciel (entrée pour garder) : " },
+                // ── Log format (dev) ──
+                ["log_format_changed"] = new() { [Language.English] = "Log format changed to {0}", [Language.French] = "Format de log changé en {0}" },
 
-                // ===== WPF SIDEBAR =====
+                // ── Misc ──
+                ["press_any_key"] = new() { [Language.English] = "Press any key to continue...", [Language.French] = "Appuyez sur une touche pour continuer..." },
+
+                // ══════════════════════════════════════════════
+                // ══  WPF V2.0 — GUI-specific translations   ══
+                // ══════════════════════════════════════════════
+
+                // ── Header ──
                 ["wpf_subtitle"] = new() { [Language.English] = "Backup management", [Language.French] = "Gestion des sauvegardes" },
                 ["wpf_actions"] = new() { [Language.English] = "ACTIONS", [Language.French] = "ACTIONS" },
                 ["wpf_execute_all"] = new() { [Language.English] = "▶  Execute All", [Language.French] = "▶  Tout exécuter" },

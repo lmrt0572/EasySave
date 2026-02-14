@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
+using EasyLog.Models;
 using EasySave.Core.Models;
 using EasySave.Core.Models.Enums;
 using EasySave.Core.ViewModels;
@@ -11,7 +13,7 @@ namespace EasySave.Cmd.Views
     public class CmdView
     {
         // ===== CONSTANTS =====
-        private const int MenuOptionCount = 7;
+        private const int MenuOptionCount = 8;
         private const int BoxWidth = 50;
 
         // ===== PRIVATE MEMBERS =====
@@ -36,7 +38,6 @@ namespace EasySave.Cmd.Views
 
                 var key = Console.ReadKey(intercept: true);
 
-                // ----- Arrow keys: move selection
                 if (key.Key == ConsoleKey.UpArrow)
                 {
                     selected = (selected - 1 + MenuOptionCount) % MenuOptionCount;
@@ -48,16 +49,14 @@ namespace EasySave.Cmd.Views
                     continue;
                 }
 
-                // ----- Enter: validate current selection
                 if (key.Key == ConsoleKey.Enter)
                 {
                     if (ExecuteMenuAction(selected))
-                        return; // Quit chosen
+                        return;
                     continue;
                 }
 
-                // ----- Number keys 1-7: direct selection
-                if (key.KeyChar >= '1' && key.KeyChar <= '7')
+                if (key.KeyChar >= '1' && key.KeyChar <= '8')
                 {
                     int index = key.KeyChar - '1';
                     if (ExecuteMenuAction(index))
@@ -79,7 +78,8 @@ namespace EasySave.Cmd.Views
                     case 3: RunDeleteJob(); break;
                     case 4: RunSettings(); break;
                     case 5: RunChangeLanguage(); break;
-                    case 6: return true; // Quit
+                    case 6: RunChangeLogFormat(); break;
+                    case 7: return true; // Quit
                 }
             }
             catch (Exception ex)
@@ -88,9 +88,9 @@ namespace EasySave.Cmd.Views
                 Console.WriteLine("  " + ex.Message);
             }
 
-            if (index != 6)
+            if (index != 7)
                 WaitForKey();
-            return index == 6;
+            return index == 7;
         }
 
         // ===== MENU DRAWING =====
@@ -110,6 +110,7 @@ namespace EasySave.Cmd.Views
                 "menu_delete",
                 "menu_settings",
                 "menu_language",
+                "menu_log_format",
                 "menu_quit"
             };
 
@@ -151,7 +152,7 @@ namespace EasySave.Cmd.Views
             Console.WriteLine("  " + new string(character, width));
         }
 
-        // ===== SETTINGS =====
+        // ===== SETTINGS (feature/GUI) =====
         private void RunSettings()
         {
             Console.WriteLine();
@@ -182,6 +183,34 @@ namespace EasySave.Cmd.Views
 
             Console.WriteLine();
             DisplaySuccess("settings_success");
+        }
+
+        // ===== LOG FORMAT (dev) =====
+        private void RunChangeLogFormat()
+        {
+            var currentFormat = _viewModel.GetCurrentLogFormat();
+            string currentLabel = currentFormat == LogFormat.Json ? "JSON" : "XML";
+
+            DisplayMessage($"Current format: {currentLabel}", useTranslation: false);
+
+            string choice = PromptUser("prompt_log_format").Trim();
+
+            if (choice == "1")
+            {
+                _viewModel.SetLogFormat(LogFormat.Json);
+                string msg = _lang.GetText("log_format_changed", "JSON");
+                DisplayMessage(msg, useTranslation: false);
+            }
+            else if (choice == "2")
+            {
+                _viewModel.SetLogFormat(LogFormat.Xml);
+                string msg = _lang.GetText("log_format_changed", "XML");
+                DisplayMessage(msg, useTranslation: false);
+            }
+            else
+            {
+                DisplayError("error_invalid_choice");
+            }
         }
 
         // ===== JOB LISTS =====
@@ -263,9 +292,18 @@ namespace EasySave.Cmd.Views
             DisplaySuccess("language_changed");
         }
 
-        // ===== HELPERS =====
+        // ===== DISPLAY HELPERS =====
 
-        private void DisplayMessage(string textKey) => Console.WriteLine("  " + (_lang.GetText(textKey) ?? textKey));
+        private void DisplayMessage(string textKey, bool useTranslation = true)
+        {
+            string message = useTranslation ? _lang.GetText(textKey) : textKey;
+            Console.WriteLine("  " + message);
+        }
+
+        private void DisplayLabelValue(string labelKey, string value)
+        {
+            Console.WriteLine("  " + _lang.GetText(labelKey) + value);
+        }
 
         private void DisplaySuccess(string textKey)
         {
