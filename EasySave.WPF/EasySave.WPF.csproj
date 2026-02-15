@@ -16,6 +16,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<ProjectReference Include="..\CryptoSoft\CryptoSoft.csproj" ReferenceOutputAssembly="false" />
 		<ProjectReference Include="..\EasyLog\EasyLog.csproj" />
 		<ProjectReference Include="..\EasySave.Core\EasySave.Core.csproj" />
 	</ItemGroup>
