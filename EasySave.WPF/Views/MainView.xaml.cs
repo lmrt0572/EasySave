@@ -13,7 +13,7 @@ using EasySave.Core.Models.Enums;
 using EasySave.Core.ViewModels;
 using Lang = EasySave.Core.Models.Enums.Language;
 
-namespace EasySave.WPF
+namespace EasySave.WPF.Views
 {
     public partial class MainView : Window
     {
@@ -24,7 +24,7 @@ namespace EasySave.WPF
         private BackupJob? _editingJob;
         private int _currentThemeIndex;
 
-        // ===== THEME DATA =====
+        // ===== THEME DATA ===== (paths relative to application root)
         private static readonly (string File, string Name, string Bg, string Sidebar, string Accent, string Border, string Text)[] Themes =
         {
             ("Styles/Themes/Theme_BeigeClassique.xaml", "Beige Classique", "#E7D3C1", "#553f2a", "#a67847", "#C9A882", "#553f2a"),
@@ -393,7 +393,7 @@ namespace EasySave.WPF
 
         // ===== SETTINGS HANDLERS =====
         private void TxtBusinessSoftware_TextChanged(object s, TextChangedEventArgs e) { if (_viewModel != null) _viewModel.BusinessSoftwareName = TxtBusinessSoftware.Text.Trim(); }
-        private void TxtEncryptionKey_LostFocus(object s, RoutedEventArgs e) { if (_viewModel != null && !string.IsNullOrWhiteSpace(TxtEncryptionKey.Text)) _viewModel.EncryptionKey = TxtEncryptionKey.Text.Trim(); }
+        private void TxtEncryptionKey_LostFocus(object s, RoutedEventArgs e) { if (_viewModel != null) _viewModel.EncryptionKey = TxtEncryptionKey.Text.Trim(); }
         private void TxtEncryptionExtensions_LostFocus(object s, RoutedEventArgs e) { if (_viewModel != null && !string.IsNullOrWhiteSpace(TxtEncryptionExtensions.Text)) _viewModel.EncryptionExtensionsText = TxtEncryptionExtensions.Text.Trim(); }
 
         // ===== TRANSLATIONS =====

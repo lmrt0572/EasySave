@@ -39,6 +39,7 @@ namespace EasySave.Core.Services
 
         public bool IsExtensionTargeted(string filePath)
         {
+            if (string.IsNullOrWhiteSpace(_key)) return false;
             if (string.IsNullOrEmpty(filePath)) return false;
             string ext = Path.GetExtension(filePath).ToLowerInvariant();
             return _targetedExtensions.Contains(ext);
@@ -51,9 +52,9 @@ namespace EasySave.Core.Services
                 return -99;
             }
 
-            if (string.IsNullOrEmpty(_key))
+            if (string.IsNullOrWhiteSpace(_key))
             {
-                return -1;
+                return 0;
             }
 
             await _semaphore.WaitAsync();
