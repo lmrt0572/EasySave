@@ -1,7 +1,8 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -20,16 +21,27 @@ namespace EasySave.Core.Services
         public EncryptionService(string exePath, string key, List<string> extensions)
         {
             _cryptoSoftPath = exePath;
-            _key = key;
-            _targetedExtensions = extensions ?? new List<string>();
+            _key = key ?? string.Empty;
+            _targetedExtensions = (extensions ?? new List<string>())
+                .Select(e =>
+                {
+                    var x = e.Trim().ToLowerInvariant();
+                    if (string.IsNullOrEmpty(x)) return null;
+                    return x.StartsWith('.') ? x : "." + x;
+                })
+                .Where(e => e != null)
+                .Cast<string>()
+                .Distinct()
+                .ToList();
         }
 
         // ===== INTERFACE IMPLEMENTATION =====
 
         public bool IsExtensionTargeted(string filePath)
         {
+            if (string.IsNullOrWhiteSpace(_key)) return false;
             if (string.IsNullOrEmpty(filePath)) return false;
-            string ext = Path.GetExtension(filePath).ToLower();
+            string ext = Path.GetExtension(filePath).ToLowerInvariant();
             return _targetedExtensions.Contains(ext);
         }
 
@@ -40,6 +52,11 @@ namespace EasySave.Core.Services
                 return -99;
             }
 
+            if (string.IsNullOrWhiteSpace(_key))
+            {
+                return 0;
+            }
+
             await _semaphore.WaitAsync();
             try
             {
@@ -48,9 +65,10 @@ namespace EasySave.Core.Services
                     StartInfo = new ProcessStartInfo
                     {
                         FileName = _cryptoSoftPath,
-                        Arguments = $"\"{targetFilePath}\" \"{_key}\"",
+                        ArgumentList = { targetFilePath, _key },
                         CreateNoWindow = true,
-                        UseShellExecute = false
+                        UseShellExecute = false,
+                        WorkingDirectory = Path.GetDirectoryName(_cryptoSoftPath) ?? AppDomain.CurrentDomain.BaseDirectory
                     }
                 };
 

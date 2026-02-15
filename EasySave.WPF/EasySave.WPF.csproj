@@ -1,4 +1,8 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<ItemGroup>
+		<ApplicationDefinition Include="Views\App.xaml"/>
+	</ItemGroup>
 
 	<PropertyGroup>
 		<OutputType>WinExe</OutputType>
@@ -7,9 +11,16 @@
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<UseWPF>true</UseWPF>
+		<ApplicationIcon>Assets\Branding\app_icon.ico</ApplicationIcon>
 	</PropertyGroup>
 
 	<ItemGroup>
+		<Resource Include="Assets\Branding\logo_welcome.png"/>
+		<Resource Include="Assets\Branding\logo_sidebar.png"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\CryptoSoft\CryptoSoft.csproj" ReferenceOutputAssembly="false" />
 		<ProjectReference Include="..\EasyLog\EasyLog.csproj" />
 		<ProjectReference Include="..\EasySave.Core\EasySave.Core.csproj" />
 	</ItemGroup>

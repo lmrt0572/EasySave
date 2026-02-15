@@ -305,7 +305,8 @@ namespace EasySave.Core.ViewModels
                     if (configDto != null)
                     {
                         _encryptionKey = configDto.EncryptionKey ?? "Prosoft123";
-                        _encryptionExtensions = configDto.EncryptionExtensions ?? new List<string> { ".txt", ".md", ".pdf" };
+                        var ext = configDto.EncryptionExtensions;
+                        _encryptionExtensions = (ext != null && ext.Count > 0) ? ext : new List<string> { ".txt", ".md", ".pdf" };
                         _businessSoftwareName = configDto.BusinessSoftwareName ?? "CalculatorApp";
                         _currentLogFormat = configDto.LogFormat;
 

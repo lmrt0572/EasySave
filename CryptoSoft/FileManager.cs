@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Text;
 
 namespace CryptoSoft;
@@ -31,9 +31,13 @@ public class FileManager(string path, string key)
     public int TransformFile()
     {
         if (!CheckFile()) return -1;
+        if (string.IsNullOrEmpty(Key))
+            return -1;
         Stopwatch stopwatch = Stopwatch.StartNew();
         var fileBytes = File.ReadAllBytes(FilePath);
         var keyBytes = ConvertToByte(Key);
+        if (keyBytes.Length == 0)
+            return -1;
         fileBytes = XorMethod(fileBytes, keyBytes);
         File.WriteAllBytes(FilePath, fileBytes);
         stopwatch.Stop();
