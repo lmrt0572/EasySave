@@ -210,7 +210,6 @@ namespace EasySave.Core.ViewModels
 
                 json = json.TrimStart();
 
-                // Backward compatibility: old format was a plain array of jobs
                 if (json.StartsWith("["))
                 {
                     var jobs = JsonSerializer.Deserialize<List<BackupJob>>(json);
@@ -231,7 +230,7 @@ namespace EasySave.Core.ViewModels
         private void SaveConfig()
         {
             try { File.WriteAllText(_configPath, JsonSerializer.Serialize(_config, _jsonOpts)); }
-            catch { /* Ignore config save errors */ }
+            catch { }
         }
     }
 }

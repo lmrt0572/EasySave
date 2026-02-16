@@ -333,7 +333,11 @@ namespace EasySave.Core.ViewModels
         }
 
         // ===== PERSISTENCE =====
-        private static readonly JsonSerializerOptions _jsonOpts = new() { WriteIndented = true };
+        private static readonly JsonSerializerOptions _jsonOpts = new()
+        {
+            WriteIndented = true,
+            PropertyNameCaseInsensitive = true
+        };
 
         private void LoadConfig()
         {
@@ -346,11 +350,11 @@ namespace EasySave.Core.ViewModels
 
                 if (json.StartsWith("["))
                 {
-                    var jobs = JsonSerializer.Deserialize<List<BackupJob>>(json);
+                    var jobs = JsonSerializer.Deserialize<List<BackupJob>>(json, _jsonOpts);
                     _config = new AppConfig { Jobs = jobs ?? new() };
                 }
                 else
-                    _config = JsonSerializer.Deserialize<AppConfig>(json) ?? new AppConfig();
+                    _config = JsonSerializer.Deserialize<AppConfig>(json, _jsonOpts) ?? new AppConfig();
             }
             catch { _config = new AppConfig(); }
             ApplyLogFormat();

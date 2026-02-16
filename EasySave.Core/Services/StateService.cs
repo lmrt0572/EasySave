@@ -19,7 +19,11 @@ namespace EasySave.Core.Services
         private static readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
         {
             WriteIndented = true,
-            Converters = { new StateDateTimeConverter() }
+            Converters =
+    {
+        new JsonStringEnumConverter(), 
+        new StateDateTimeConverter()
+    }
         };
 
         private sealed class StateDateTimeConverter : JsonConverter<DateTime>
@@ -64,10 +68,7 @@ namespace EasySave.Core.Services
 
             lock (_lockObject)
             {
-                // Read existing states
                 List<BackupJobState> allStates = ReadAllStates();
-
-                // Find and update or add the state
                 int existingIndex = allStates.FindIndex(s => s.JobName == state.JobName);
                 if (existingIndex >= 0)
                 {
@@ -77,8 +78,6 @@ namespace EasySave.Core.Services
                 {
                     allStates.Add(state);
                 }
-
-                // Write back to file with pretty-print
                 WriteAllStates(allStates);
             }
         }

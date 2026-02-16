@@ -11,6 +11,7 @@ using System.Windows.Shapes;
 using EasySave.Core.Models;
 using EasySave.Core.Models.Enums;
 using EasySave.Core.ViewModels;
+using Microsoft.Win32;
 using Lang = EasySave.Core.Models.Enums.Language;
 
 namespace EasySave.WPF.Views
@@ -23,26 +24,24 @@ namespace EasySave.WPF.Views
         private int _currentSettingsTab;
         private BackupJob? _editingJob;
         private int _currentThemeIndex;
+        private bool _isKeyVisible = true;
 
-        // ===== THEME DATA ===== (paths relative to application root)
         private static readonly (string File, string Name, string Bg, string Sidebar, string Accent, string Border, string Text)[] Themes =
         {
             ("Styles/Themes/Theme_BeigeClassique.xaml", "Beige Classique", "#E7D3C1", "#553f2a", "#a67847", "#C9A882", "#553f2a"),
             ("Styles/Themes/Theme_CaramelProfond.xaml", "Caramel Profond", "#DFC4A8", "#3E2415", "#B5651D", "#C4A07A", "#3E2415"),
-            ("Styles/Themes/Theme_IvoireCreme.xaml",    "Ivoire Crème",    "#F2ECE0", "#5C4033", "#8B6F4E", "#D4C8B4", "#4A3828"),
+            ("Styles/Themes/Theme_IvoireCreme.xaml",    "Ivoire Cr\u00e8me",    "#F2ECE0", "#5C4033", "#8B6F4E", "#D4C8B4", "#4A3828"),
             ("Styles/Themes/Theme_TerreCuite.xaml",     "Terre Cuite",     "#E0C0A0", "#6B3A20", "#C06030", "#C8A078", "#5A3018"),
             ("Styles/Themes/Theme_ModeNuit.xaml",       "Mode Nuit",       "#1E1E2E", "#14101E", "#C99B6D", "#3E3E52", "#E0D8CC"),
         };
 
-        // ===== PLAY BUTTON REFS (synced with CanExecute) =====
         private readonly List<Button> _playButtons = new();
 
-        // ===== DASHBOARD FIELD REFS =====
         private TextBlock _dashTotalLabel = null!, _dashTotalValue = null!;
         private TextBlock _dashStatusLabel = null!, _dashStatusValue = null!;
         private TextBlock _dashLogLabel = null!, _dashLogValue = null!;
         private TextBlock _dashEncLabel = null!, _dashEncValue = null!;
-        private Ellipse _dashStatusDot = null!;
+        private Ellipse _dashStatusDot = null!, _dashEncDot = null!;
 
         public MainView()
         {
@@ -71,25 +70,69 @@ namespace EasySave.WPF.Views
                         if (_viewModel.IsNotificationVisible) ShowNotificationToast(); else HideNotificationToast(); break;
                     case nameof(WpfViewModel.NotificationMessage): NotifText.Text = _viewModel.NotificationMessage; break;
                     case nameof(WpfViewModel.NotificationType): UpdateNotificationStyle(); break;
+                    case nameof(WpfViewModel.IsEncryptionActive): UpdateDashboard(); break;
                 }
             });
 
             TxtBusinessSoftware.Text = _viewModel.BusinessSoftwareName;
             TxtEncryptionKey.Text = _viewModel.EncryptionKey;
+            PwdEncryptionKey.Password = _viewModel.EncryptionKey;
             TxtEncryptionExtensions.Text = _viewModel.EncryptionExtensionsText;
 
-            BuildThemeSwatches();
-            BuildDashboardCards();
-            SetActiveNav("Jobs");
-            SetActiveSettingsTab(0);
-            UpdateLogFormatButtons();
-            UpdateLanguageButtons();
-            UpdateThemeSelection();
-            ApplyTranslations();
-            RefreshJobList();
-            UpdateWarning();
-            UpdateDashboard();
+            BuildThemeSwatches(); BuildDashboardCards();
+            SetActiveNav("Jobs"); SetActiveSettingsTab(0);
+            UpdateLogFormatButtons(); UpdateLanguageButtons(); UpdateThemeSelection();
+            ApplyTranslations(); RefreshJobList(); UpdateWarning(); UpdateDashboard();
             BtnExecuteAll.IsEnabled = _viewModel.CanExecute;
+        }
+
+        // ===== FOLDER BROWSER =====
+        private void BtnBrowseSource_Click(object sender, RoutedEventArgs e)
+        {
+            var path = BrowseForFolder();
+            if (!string.IsNullOrEmpty(path)) TxtSource.Text = path;
+        }
+
+        private void BtnBrowseTarget_Click(object sender, RoutedEventArgs e)
+        {
+            var path = BrowseForFolder();
+            if (!string.IsNullOrEmpty(path)) TxtTarget.Text = path;
+        }
+
+        private string? BrowseForFolder()
+        {
+            var dialog = new OpenFolderDialog { Title = "Select folder", Multiselect = false };
+            if (dialog.ShowDialog(this) == true) return dialog.FolderName;
+            return null;
+        }
+
+        // ===== PASSWORD TOGGLE =====
+        private void BtnToggleKeyVisibility_Click(object sender, RoutedEventArgs e)
+        {
+            _isKeyVisible = !_isKeyVisible;
+            if (_isKeyVisible)
+            {
+                TxtEncryptionKey.Text = PwdEncryptionKey.Password;
+                TxtEncryptionKey.Visibility = Visibility.Visible;
+                PwdEncryptionKey.Visibility = Visibility.Collapsed;
+                BtnToggleKeyVisibility.Content = "\U0001F441";
+            }
+            else
+            {
+                PwdEncryptionKey.Password = TxtEncryptionKey.Text;
+                TxtEncryptionKey.Visibility = Visibility.Collapsed;
+                PwdEncryptionKey.Visibility = Visibility.Visible;
+                BtnToggleKeyVisibility.Content = "\U0001F512";
+            }
+        }
+
+        private void PwdEncryptionKey_LostFocus(object sender, RoutedEventArgs e)
+        {
+            if (_viewModel != null)
+            {
+                _viewModel.EncryptionKey = PwdEncryptionKey.Password.Trim();
+                TxtEncryptionKey.Text = PwdEncryptionKey.Password;
+            }
         }
 
         // ===== NAVIGATION =====
@@ -103,7 +146,6 @@ namespace EasySave.WPF.Views
             JobsPage.Visibility = page == "Jobs" ? Visibility.Visible : Visibility.Collapsed;
             DashboardPage.Visibility = page == "Dashboard" ? Visibility.Visible : Visibility.Collapsed;
             SettingsPage.Visibility = page == "Settings" ? Visibility.Visible : Visibility.Collapsed;
-
             var (a, t, m) = (TC("AccentPrimary", "#a67847"), TC("TextOnAccent", "#F5E6D3"), TC("TextOnDarkMuted", "#B8A08A"));
             foreach (var (btn, p) in new[] { (BtnNavJobs, "Jobs"), (BtnNavDashboard, "Dashboard"), (BtnNavSettings, "Settings") })
             { btn.Background = p == page ? B(a) : Brushes.Transparent; btn.Foreground = B(p == page ? t : m); }
@@ -122,7 +164,6 @@ namespace EasySave.WPF.Views
             TabLogsContent.Visibility = idx == 1 ? Visibility.Visible : Visibility.Collapsed;
             TabLanguageContent.Visibility = idx == 2 ? Visibility.Visible : Visibility.Collapsed;
             TabThemeContent.Visibility = idx == 3 ? Visibility.Visible : Visibility.Collapsed;
-
             var (a, t, m) = (TC("AccentPrimary", "#a67847"), TC("TextOnAccent", "#F5E6D3"), TC("TextMuted", "#9C8468"));
             foreach (var (btn, i) in new[] { (BtnTabGeneral, 0), (BtnTabLogs, 1), (BtnTabLanguage, 2), (BtnTabTheme, 3) })
             { btn.Background = i == idx ? B(a) : Brushes.Transparent; btn.Foreground = B(i == idx ? t : m); }
@@ -130,9 +171,7 @@ namespace EasySave.WPF.Views
 
         // ===== THEME SWITCHING =====
         private void ThemeSwatch_Click(object sender, MouseButtonEventArgs e)
-        {
-            if (sender is Border bd && bd.Tag is int idx) ApplyTheme(idx);
-        }
+        { if (sender is Border bd && bd.Tag is int idx) ApplyTheme(idx); }
 
         private void ApplyTheme(int idx)
         {
@@ -141,7 +180,6 @@ namespace EasySave.WPF.Views
             var dicts = Application.Current.Resources.MergedDictionaries;
             var theme = new ResourceDictionary { Source = new Uri(Themes[idx].File, UriKind.Relative) };
             if (dicts.Count > 0) dicts[0] = theme; else dicts.Insert(0, theme);
-
             UpdateThemeSelection(); SetActiveNav(_currentPage); SetActiveSettingsTab(_currentSettingsTab);
             UpdateLogFormatButtons(); UpdateLanguageButtons(); RefreshJobList();
             UpdateWarning(); UpdateDashboard(); UpdateProgressGradient();
@@ -158,16 +196,21 @@ namespace EasySave.WPF.Views
                 dots.Children.Add(new Ellipse { Width = 20, Height = 20, Fill = B(t.Bg), Stroke = B(t.Border), StrokeThickness = 1 });
                 dots.Children.Add(new Ellipse { Width = 20, Height = 20, Fill = B(t.Sidebar), Margin = new Thickness(3, 0, 0, 0) });
                 dots.Children.Add(new Ellipse { Width = 20, Height = 20, Fill = B(t.Accent), Margin = new Thickness(3, 0, 0, 0) });
-
                 var label = new TextBlock { Text = t.Name, FontSize = 10, FontWeight = FontWeights.SemiBold, Foreground = B(t.Text), HorizontalAlignment = HorizontalAlignment.Center };
                 var inner = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center };
                 inner.Children.Add(dots); inner.Children.Add(label);
-
                 var swatch = new Border
                 {
-                    Tag = i, Margin = new Thickness(0, 0, 10, 14), CornerRadius = new CornerRadius(12),
-                    Padding = new Thickness(12, 10, 12, 10), Cursor = Cursors.Hand, Width = 120,
-                    Background = B(t.Bg), BorderThickness = new Thickness(2), BorderBrush = Brushes.Transparent, Child = inner
+                    Tag = i,
+                    Margin = new Thickness(0, 0, 10, 14),
+                    CornerRadius = new CornerRadius(12),
+                    Padding = new Thickness(12, 10, 12, 10),
+                    Cursor = Cursors.Hand,
+                    Width = 120,
+                    Background = B(t.Bg),
+                    BorderThickness = new Thickness(2),
+                    BorderBrush = Brushes.Transparent,
+                    Child = inner
                 };
                 swatch.MouseLeftButtonDown += ThemeSwatch_Click;
                 ThemeSwatchPanel.Children.Add(swatch);
@@ -189,26 +232,27 @@ namespace EasySave.WPF.Views
             GradEnd.Color = Cl(TC("AccentLight", "#C99B6D"));
         }
 
-        // ===== DASHBOARD (generated) =====
+        // ===== DASHBOARD =====
         private void BuildDashboardCards()
         {
             var shadow = new Func<DropShadowEffect>(() => new DropShadowEffect { BlurRadius = 12, ShadowDepth = 2, Opacity = 0.06, Color = Cl("#553f2a") });
-
             Border MakeCard(UIElement content) => new()
             {
-                Background = B(TC("BgCard", "#F2E0CE")), CornerRadius = new CornerRadius(14),
-                Padding = new Thickness(24, 20, 24, 20), Margin = new Thickness(0, 0, 16, 16),
-                MinWidth = 200, Effect = shadow(), Child = content
+                Background = B(TC("BgCard", "#F2E0CE")),
+                CornerRadius = new CornerRadius(14),
+                Padding = new Thickness(24, 20, 24, 20),
+                Margin = new Thickness(0, 0, 16, 16),
+                MinWidth = 200,
+                Effect = shadow(),
+                Child = content
             };
 
-            // Total Jobs
             var sp1 = new StackPanel();
             _dashTotalLabel = new TextBlock { Text = "Total Jobs", Foreground = B(TC("TextMuted", "#9C8468")), FontSize = 11, FontWeight = FontWeights.SemiBold };
             _dashTotalValue = new TextBlock { Text = "0", FontSize = 32, FontWeight = FontWeights.Bold, Foreground = B(TC("TextPrimary", "#553f2a")), Margin = new Thickness(0, 4, 0, 0) };
             sp1.Children.Add(_dashTotalLabel); sp1.Children.Add(_dashTotalValue);
             DashboardCards.Children.Add(MakeCard(sp1));
 
-            // Status
             var sp2 = new StackPanel();
             _dashStatusLabel = new TextBlock { Text = "System Status", Foreground = B(TC("TextMuted", "#9C8468")), FontSize = 11, FontWeight = FontWeights.SemiBold };
             var statusRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 8, 0, 0) };
@@ -218,18 +262,19 @@ namespace EasySave.WPF.Views
             sp2.Children.Add(_dashStatusLabel); sp2.Children.Add(statusRow);
             DashboardCards.Children.Add(MakeCard(sp2));
 
-            // Log Format
             var sp3 = new StackPanel();
             _dashLogLabel = new TextBlock { Text = "Log Format", Foreground = B(TC("TextMuted", "#9C8468")), FontSize = 11, FontWeight = FontWeights.SemiBold };
             _dashLogValue = new TextBlock { Text = "JSON", FontSize = 24, FontWeight = FontWeights.Bold, Foreground = B(TC("AccentPrimary", "#a67847")), Margin = new Thickness(0, 4, 0, 0) };
             sp3.Children.Add(_dashLogLabel); sp3.Children.Add(_dashLogValue);
             DashboardCards.Children.Add(MakeCard(sp3));
 
-            // Encryption
             var sp4 = new StackPanel();
             _dashEncLabel = new TextBlock { Text = "Encryption", Foreground = B(TC("TextMuted", "#9C8468")), FontSize = 11, FontWeight = FontWeights.SemiBold };
-            _dashEncValue = new TextBlock { Text = "Active", FontSize = 14, FontWeight = FontWeights.SemiBold, Foreground = B("#5A7247"), Margin = new Thickness(0, 8, 0, 0) };
-            sp4.Children.Add(_dashEncLabel); sp4.Children.Add(_dashEncValue);
+            var encRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 8, 0, 0) };
+            _dashEncDot = new Ellipse { Width = 10, Height = 10, Fill = B("#5A7247"), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) };
+            _dashEncValue = new TextBlock { Text = "Active", FontSize = 14, FontWeight = FontWeights.SemiBold, Foreground = B("#5A7247") };
+            encRow.Children.Add(_dashEncDot); encRow.Children.Add(_dashEncValue);
+            sp4.Children.Add(_dashEncLabel); sp4.Children.Add(encRow);
             DashboardCards.Children.Add(MakeCard(sp4));
         }
 
@@ -245,11 +290,9 @@ namespace EasySave.WPF.Views
         // ===== JOB LIST =====
         private void RefreshJobList()
         {
-            JobListPanel.Children.Clear();
-            _playButtons.Clear();
+            JobListPanel.Children.Clear(); _playButtons.Clear();
             var jobs = _viewModel.Jobs;
             var (tm, tml) = (TC("TextMuted", "#9C8468"), TC("TextOnDarkMuted", "#B8A08A"));
-
             if (jobs.Count == 0)
             {
                 var ep = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 60, 0, 0) };
@@ -259,7 +302,6 @@ namespace EasySave.WPF.Views
             }
             else
                 for (int i = 0; i < jobs.Count; i++) JobListPanel.Children.Add(CreateJobCard(jobs[i]));
-
             TxtJobCount.Text = _lang.GetText("wpf_jobs_count", jobs.Count);
             UpdateDashboard();
         }
@@ -271,37 +313,40 @@ namespace EasySave.WPF.Views
             bool isFull = job.Type == BackupType.Full;
             string typeText = isFull ? _lang.GetText("type_full") : _lang.GetText("type_differential");
             Color bc = isFull ? Cl(accent) : Cl(TC("StatusSuccess", "#5A7247"));
-
-            var card = new Border { Background = B(bgCard), CornerRadius = new CornerRadius(14), Padding = new Thickness(20, 16, 20, 16),
-                Margin = new Thickness(0, 0, 0, 12), Cursor = Cursors.Hand,
-                Effect = new DropShadowEffect { BlurRadius = 12, ShadowDepth = 2, Opacity = 0.06, Color = Cl(tp) } };
-
+            var card = new Border
+            {
+                Background = B(bgCard),
+                CornerRadius = new CornerRadius(14),
+                Padding = new Thickness(20, 16, 20, 16),
+                Margin = new Thickness(0, 0, 0, 12),
+                Cursor = Cursors.Hand,
+                Effect = new DropShadowEffect { BlurRadius = 12, ShadowDepth = 2, Opacity = 0.06, Color = Cl(tp) }
+            };
             var cg = new Grid();
             cg.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             cg.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-
-            // Top row
             var top = new Grid();
             top.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             top.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             top.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
             var name = new TextBlock { Text = job.Name, FontSize = 14, FontWeight = FontWeights.SemiBold, Foreground = B(tp), VerticalAlignment = VerticalAlignment.Center };
             Grid.SetColumn(name, 0); top.Children.Add(name);
-
-            var badge = new Border { Background = new SolidColorBrush(Color.FromArgb(0x20, bc.R, bc.G, bc.B)), CornerRadius = new CornerRadius(6),
-                Padding = new Thickness(10, 4, 10, 4), Margin = new Thickness(0, 0, 12, 0), VerticalAlignment = VerticalAlignment.Center,
-                Child = new TextBlock { Text = typeText, FontSize = 11, FontWeight = FontWeights.SemiBold, Foreground = new SolidColorBrush(bc) } };
+            var badge = new Border
+            {
+                Background = new SolidColorBrush(Color.FromArgb(0x20, bc.R, bc.G, bc.B)),
+                CornerRadius = new CornerRadius(6),
+                Padding = new Thickness(10, 4, 10, 4),
+                Margin = new Thickness(0, 0, 12, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                Child = new TextBlock { Text = typeText, FontSize = 11, FontWeight = FontWeights.SemiBold, Foreground = new SolidColorBrush(bc) }
+            };
             Grid.SetColumn(badge, 1); top.Children.Add(badge);
-
             var acts = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-            var r = MkBtn("▶", accent, _viewModel.CanExecute); r.Click += (s, e) => { e.Handled = true; ExecuteSingleJob(job); }; _playButtons.Add(r); acts.Children.Add(r);
-            var ed = MkBtn("✏", ts, true); ed.Click += (s, e) => { e.Handled = true; StartEditJob(job); }; acts.Children.Add(ed);
-            var dl = MkBtn("✕", TC("StatusDanger", "#9B4D4D"), true); dl.Click += (s, e) => { e.Handled = true; DeleteJob(job); }; acts.Children.Add(dl);
+            var r = MkBtn("\u25B6", accent, _viewModel.CanExecute); r.Click += (s, e) => { e.Handled = true; ExecuteSingleJob(job); }; _playButtons.Add(r); acts.Children.Add(r);
+            var ed = MkBtn("\u270F", ts, true); ed.Click += (s, e) => { e.Handled = true; StartEditJob(job); }; acts.Children.Add(ed);
+            var dl = MkBtn("\u2715", TC("StatusDanger", "#9B4D4D"), true); dl.Click += (s, e) => { e.Handled = true; DeleteJob(job); }; acts.Children.Add(dl);
             Grid.SetColumn(acts, 2); top.Children.Add(acts);
             Grid.SetRow(top, 0); cg.Children.Add(top);
-
-            // Info row
             var info = new Grid { Margin = new Thickness(0, 10, 0, 0) };
             info.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(55) });
             info.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -309,7 +354,6 @@ namespace EasySave.WPF.Views
             AddCell(info, 0, 0, "Source", tm); AddCell(info, 0, 1, job.SourceDirectory, ts, true);
             AddCell(info, 1, 0, "Target", tm); AddCell(info, 1, 1, job.TargetDirectory, ts, true);
             Grid.SetRow(info, 1); cg.Children.Add(info);
-
             card.Child = cg;
             card.MouseEnter += (s, e) => card.Background = B(bgHover);
             card.MouseLeave += (s, e) => card.Background = B(bgCard);
@@ -349,7 +393,7 @@ namespace EasySave.WPF.Views
             { _viewModel.ShowNotification(_lang.GetText("notif_fields_required"), "warning"); return; }
             if (_editingJob != null) { _viewModel.DeleteJob(_editingJob); _editingJob = null; }
             if (_viewModel.CreateJob(name, source, target, typeInput))
-            { ClearCreateForm(); RefreshJobList(); _viewModel.ShowNotification(_lang.GetText(_editingJob == null ? "notif_job_created" : "notif_job_updated"), "success"); }
+            { ClearCreateForm(); RefreshJobList(); _viewModel.ShowNotification(_lang.GetText("notif_job_created"), "success"); }
             else _viewModel.ShowNotification(_lang.GetText("error_invalid_choice"), "error");
         }
 
@@ -393,8 +437,21 @@ namespace EasySave.WPF.Views
 
         // ===== SETTINGS HANDLERS =====
         private void TxtBusinessSoftware_TextChanged(object s, TextChangedEventArgs e) { if (_viewModel != null) _viewModel.BusinessSoftwareName = TxtBusinessSoftware.Text.Trim(); }
-        private void TxtEncryptionKey_LostFocus(object s, RoutedEventArgs e) { if (_viewModel != null) _viewModel.EncryptionKey = TxtEncryptionKey.Text.Trim(); }
-        private void TxtEncryptionExtensions_LostFocus(object s, RoutedEventArgs e) { if (_viewModel != null && !string.IsNullOrWhiteSpace(TxtEncryptionExtensions.Text)) _viewModel.EncryptionExtensionsText = TxtEncryptionExtensions.Text.Trim(); }
+        private void TxtEncryptionKey_LostFocus(object s, RoutedEventArgs e)
+        {
+            if (_viewModel != null)
+            {
+                _viewModel.EncryptionKey = TxtEncryptionKey.Text.Trim();
+                PwdEncryptionKey.Password = TxtEncryptionKey.Text;
+            }
+        }
+        private void TxtEncryptionExtensions_LostFocus(object s, RoutedEventArgs e)
+        {
+            if (_viewModel != null)
+            {
+                _viewModel.EncryptionExtensionsText = TxtEncryptionExtensions.Text.Trim();
+            }
+        }
 
         // ===== TRANSLATIONS =====
         private void ApplyTranslations()
@@ -409,7 +466,6 @@ namespace EasySave.WPF.Views
             TxtDashboardTitle.Text = _lang.GetText("dashboard_title");
             _dashTotalLabel.Text = _lang.GetText("dashboard_total_jobs"); _dashStatusLabel.Text = _lang.GetText("dashboard_status");
             _dashLogLabel.Text = _lang.GetText("dashboard_log_format"); _dashEncLabel.Text = _lang.GetText("dashboard_encryption");
-            _dashEncValue.Text = _lang.GetText("dashboard_active");
             TxtSettingsTitle.Text = _lang.GetText("nav_settings");
             BtnTabGeneral.Content = _lang.GetText("settings_tab_general"); BtnTabLogs.Content = _lang.GetText("settings_tab_logs");
             BtnTabLanguage.Content = _lang.GetText("settings_tab_language"); BtnTabTheme.Content = _lang.GetText("settings_tab_theme");
@@ -419,10 +475,10 @@ namespace EasySave.WPF.Views
             LblSettingsLogDesc.Text = _lang.GetText("settings_log_desc"); LblSettingsLangTitle.Text = _lang.GetText("settings_language_title");
             LblSettingsLangDesc.Text = _lang.GetText("settings_language_desc"); LblSettingsThemeTitle.Text = _lang.GetText("settings_theme_title");
             LblSettingsThemeDesc.Text = _lang.GetText("settings_theme_desc");
-            UpdateWarning();
+            UpdateWarning(); UpdateDashboard();
         }
 
-        // ===== DASHBOARD =====
+        // ===== DASHBOARD UPDATE =====
         private void UpdateDashboard()
         {
             _dashTotalValue.Text = _viewModel.GetJobCount().ToString();
@@ -432,6 +488,19 @@ namespace EasySave.WPF.Views
             { _dashStatusDot.Fill = B(sd); _dashStatusValue.Text = _lang.GetText("dashboard_blocked"); _dashStatusValue.Foreground = B(sd); }
             else
             { _dashStatusDot.Fill = B(ss); _dashStatusValue.Text = _lang.GetText("dashboard_ready"); _dashStatusValue.Foreground = B(tp); }
+
+            if (_viewModel.IsEncryptionActive)
+            {
+                _dashEncDot.Fill = B(ss);
+                _dashEncValue.Text = _lang.GetText("dashboard_active");
+                _dashEncValue.Foreground = B(ss);
+            }
+            else
+            {
+                _dashEncDot.Fill = B(TC("TextMuted", "#9C8468"));
+                _dashEncValue.Text = _lang.GetText("dashboard_inactive");
+                _dashEncValue.Foreground = B(TC("TextMuted", "#9C8468"));
+            }
         }
 
         // ===== WARNING =====
@@ -465,7 +534,6 @@ namespace EasySave.WPF.Views
             NotifDot.Fill = B(d); NotifBg.Color = Cl(bg);
         }
 
-        // ===== PLAY BUTTON SYNC =====
         private void SyncPlayButtons() { bool can = _viewModel.CanExecute; foreach (var btn in _playButtons) btn.IsEnabled = can; }
 
         protected override void OnClosed(EventArgs e) { _viewModel.Dispose(); base.OnClosed(e); }

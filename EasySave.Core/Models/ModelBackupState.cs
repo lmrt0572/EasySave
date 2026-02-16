@@ -67,9 +67,6 @@ namespace EasySave.Core.Models
             RemainingFilesSize -= fileSize;
             Progression = (int)GetProgression();
             Timestamp = DateTime.Now;
-
-            CurrentSourceFile = null;
-            CurrentDestinationFile = null;
         }
 
         public void Finish()
@@ -78,14 +75,17 @@ namespace EasySave.Core.Models
             Progression = 100;
             RemainingFiles = 0;
             RemainingFilesSize = 0;
-            CurrentSourceFile = null;
-            CurrentDestinationFile = null;
             Timestamp = DateTime.Now;
         }
 
         public void SetError()
         {
             Status = BackupStatus.Error;
+            Timestamp = DateTime.Now;
+        }
+        public void SetStopped()
+        {
+            Status = BackupStatus.Stopped;
             Timestamp = DateTime.Now;
         }
     }
