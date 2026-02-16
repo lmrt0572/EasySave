@@ -16,14 +16,12 @@ namespace EasySave.Core.Services
         // ===== PRIVATE MEMBERS =====
         private readonly string _stateFilePath;
         private readonly object _lockObject = new object();
-        // N'oublie pas de vérifier que tu as bien : using System.Text.Json.Serialization; en haut du fichier (c'est déjà le cas normalement)
-
         private static readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
         {
             WriteIndented = true,
             Converters =
     {
-        new JsonStringEnumConverter(), // <--- C'est cette ligne qui fait la magie
+        new JsonStringEnumConverter(), 
         new StateDateTimeConverter()
     }
         };
@@ -70,10 +68,7 @@ namespace EasySave.Core.Services
 
             lock (_lockObject)
             {
-                // Read existing states
                 List<BackupJobState> allStates = ReadAllStates();
-
-                // Find and update or add the state
                 int existingIndex = allStates.FindIndex(s => s.JobName == state.JobName);
                 if (existingIndex >= 0)
                 {
@@ -83,8 +78,6 @@ namespace EasySave.Core.Services
                 {
                     allStates.Add(state);
                 }
-
-                // Write back to file with pretty-print
                 WriteAllStates(allStates);
             }
         }
