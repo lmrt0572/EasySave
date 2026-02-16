@@ -146,6 +146,7 @@ namespace EasySave.Core.Models.Enums
                 ["dashboard_log_format"] = new() { [Language.English] = "Log Format", [Language.French] = "Format des logs" },
                 ["dashboard_encryption"] = new() { [Language.English] = "Encryption", [Language.French] = "Chiffrement" },
                 ["dashboard_active"] = new() { [Language.English] = "Active", [Language.French] = "Actif" },
+                ["dashboard_inactive"] = new() { [Language.English] = "Inactive", [Language.French] = "Inactif" },
 
                 // ===== JOBS PAGE =====
                 ["jobs_title"] = new() { [Language.English] = "Backup Jobs", [Language.French] = "Travaux de sauvegarde" },
