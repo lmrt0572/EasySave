@@ -16,10 +16,16 @@ namespace EasySave.Core.Services
         // ===== PRIVATE MEMBERS =====
         private readonly string _stateFilePath;
         private readonly object _lockObject = new object();
+        // N'oublie pas de vérifier que tu as bien : using System.Text.Json.Serialization; en haut du fichier (c'est déjà le cas normalement)
+
         private static readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
         {
             WriteIndented = true,
-            Converters = { new StateDateTimeConverter() }
+            Converters =
+    {
+        new JsonStringEnumConverter(), // <--- C'est cette ligne qui fait la magie
+        new StateDateTimeConverter()
+    }
         };
 
         private sealed class StateDateTimeConverter : JsonConverter<DateTime>

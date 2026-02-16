@@ -21,29 +21,22 @@ namespace EasySave.Core.ViewModels
     public class WpfViewModel : INotifyPropertyChanged, IDisposable
     {
         // ===== PRIVATE MEMBERS =====
-        private List<BackupJob> _jobs;
+        private AppConfig _config;
         private readonly string _configPath;
         private readonly LanguageManager _languageManager;
         private readonly IStateService _stateService;
         private readonly BusinessSoftwareMonitor _monitor;
         private CancellationTokenSource? _currentCts;
         private int _executionId;
-
-        private string _encryptionKey = "Prosoft123";
-        private List<string> _encryptionExtensions = new List<string> { ".txt", ".md", ".pdf" };
         private IEncryptionService _encryptionService = null!;
 
-        private string _businessSoftwareName = "CalculatorApp";
         private bool _isBusinessSoftwareDetected;
         private bool _isExecuting;
         private string _statusMessage = string.Empty;
-
         private string _currentJobName = string.Empty;
         private int _progressPercent;
         private string _progressText = string.Empty;
         private string _currentFileName = string.Empty;
-
-        private EasyLog.Models.LogFormat _logFormat = EasyLog.Models.LogFormat.Json;
 
         // ===== NOTIFICATION STATE =====
         private string _notificationMessage = string.Empty;
@@ -79,95 +72,62 @@ namespace EasySave.Core.ViewModels
 
         public string BusinessSoftwareName
         {
-            get => _businessSoftwareName;
-            set { _businessSoftwareName = value; _monitor.ProcessName = value; SaveConfig(); OnPropertyChanged(); }
+            get => _config.BusinessSoftwareName;
+            set { _config.BusinessSoftwareName = value; _monitor.ProcessName = value; SaveConfig(); OnPropertyChanged(); }
         }
 
         public string EncryptionKey
         {
-            get => _encryptionKey;
-            set { _encryptionKey = value; UpdateEncryptionService(); SaveConfig(); OnPropertyChanged(); }
+            get => _config.EncryptionKey;
+            set { _config.EncryptionKey = value; UpdateEncryptionService(); SaveConfig(); OnPropertyChanged(); OnPropertyChanged(nameof(IsEncryptionActive)); }
         }
 
         public string EncryptionExtensionsText
         {
-            get => string.Join(", ", _encryptionExtensions);
+            get => string.Join(", ", _config.EncryptionExtensions);
             set
             {
-                _encryptionExtensions = value.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                _config.EncryptionExtensions = value.Split(',', StringSplitOptions.RemoveEmptyEntries)
                     .Select(e => e.Trim().ToLowerInvariant()).Where(e => !string.IsNullOrEmpty(e))
                     .Select(e => e.StartsWith('.') ? e : "." + e).Distinct().ToList();
-                UpdateEncryptionService(); SaveConfig(); OnPropertyChanged();
+                UpdateEncryptionService(); SaveConfig(); OnPropertyChanged(); OnPropertyChanged(nameof(IsEncryptionActive));
             }
         }
 
-        // ===== LOG FORMAT (synced with EasyLog.LogService, same logic as Console) =====
+        // ===== ENCRYPTION STATUS (for Dashboard) =====
+        public bool IsEncryptionActive => !string.IsNullOrWhiteSpace(_config.EncryptionKey) && _config.EncryptionExtensions.Count > 0;
+
+        // ===== LOG FORMAT =====
         public string LogFormat
         {
-            get => _logFormat == EasyLog.Models.LogFormat.Xml ? "xml" : "json";
+            get => _config.LogFormat == EasyLog.Models.LogFormat.Xml ? "xml" : "json";
             set
             {
-                var newFormat = ParseLogFormat(value);
-                if (_logFormat == newFormat) return;
-                _logFormat = newFormat;
-                LogService.Instance.SetLogFormat(_logFormat);
-                SaveConfig();
-                OnPropertyChanged();
+                var f = ParseLogFormat(value);
+                if (_config.LogFormat == f) return;
+                _config.LogFormat = f;
+                LogService.Instance.SetLogFormat(f);
+                SaveConfig(); OnPropertyChanged();
             }
         }
 
-        // ===== PROGRESS PROPERTIES =====
+        // ===== PROGRESS =====
+        public string CurrentJobName { get => _currentJobName; private set { _currentJobName = value; OnPropertyChanged(); } }
+        public int ProgressPercent { get => _progressPercent; private set { _progressPercent = value; OnPropertyChanged(); } }
+        public string ProgressText { get => _progressText; private set { _progressText = value; OnPropertyChanged(); } }
+        public string CurrentFileName { get => _currentFileName; private set { _currentFileName = value; OnPropertyChanged(); } }
 
-        public string CurrentJobName
-        {
-            get => _currentJobName;
-            private set { _currentJobName = value; OnPropertyChanged(); }
-        }
-
-        public int ProgressPercent
-        {
-            get => _progressPercent;
-            private set { _progressPercent = value; OnPropertyChanged(); }
-        }
-
-        public string ProgressText
-        {
-            get => _progressText;
-            private set { _progressText = value; OnPropertyChanged(); }
-        }
-
-        public string CurrentFileName
-        {
-            get => _currentFileName;
-            private set { _currentFileName = value; OnPropertyChanged(); }
-        }
-
-        // ===== NOTIFICATION PROPERTIES =====
-
-        public string NotificationMessage
-        {
-            get => _notificationMessage;
-            private set { _notificationMessage = value; OnPropertyChanged(); }
-        }
-
-        public string NotificationType
-        {
-            get => _notificationType;
-            private set { _notificationType = value; OnPropertyChanged(); }
-        }
-
-        public bool IsNotificationVisible
-        {
-            get => _isNotificationVisible;
-            private set { _isNotificationVisible = value; OnPropertyChanged(); }
-        }
+        // ===== NOTIFICATION =====
+        public string NotificationMessage { get => _notificationMessage; private set { _notificationMessage = value; OnPropertyChanged(); } }
+        public string NotificationType { get => _notificationType; private set { _notificationType = value; OnPropertyChanged(); } }
+        public bool IsNotificationVisible { get => _isNotificationVisible; private set { _isNotificationVisible = value; OnPropertyChanged(); } }
 
         // ===== CONSTRUCTOR =====
         public WpfViewModel(LanguageManager languageManager)
         {
             _languageManager = languageManager ?? throw new ArgumentNullException(nameof(languageManager));
             _stateService = new StateService();
-            _jobs = new List<BackupJob>();
+            _config = new AppConfig();
             Jobs = new ObservableCollection<BackupJob>();
 
             string appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
@@ -180,7 +140,7 @@ namespace EasySave.Core.ViewModels
             RefreshObservableJobs();
 
             _monitor = BusinessSoftwareMonitor.Instance;
-            _monitor.ProcessName = _businessSoftwareName;
+            _monitor.ProcessName = _config.BusinessSoftwareName;
             _monitor.DetectionChanged += OnBusinessSoftwareDetectionChanged;
             _monitor.Start(2000);
         }
@@ -198,28 +158,22 @@ namespace EasySave.Core.ViewModels
         public async void ShowNotification(string message, string type = "info")
         {
             var myId = Interlocked.Increment(ref _notificationCounter);
-            NotificationMessage = message;
-            NotificationType = type;
-            IsNotificationVisible = true;
+            NotificationMessage = message; NotificationType = type; IsNotificationVisible = true;
             await Task.Delay(3500);
-            if (_notificationCounter == myId)
-                IsNotificationVisible = false;
+            if (_notificationCounter == myId) IsNotificationVisible = false;
         }
 
         // ===== JOB MANAGEMENT =====
-
-        public int GetJobCount() => _jobs.Count;
+        public int GetJobCount() => _config.Jobs.Count;
 
         public bool CreateJob(string name, string source, string target, int typeInput)
         {
             if (string.IsNullOrWhiteSpace(name)) return false;
-            if (_jobs.Any(j => j.Name.Equals(name, StringComparison.OrdinalIgnoreCase))) return false;
+            if (_config.Jobs.Any(j => j.Name.Equals(name, StringComparison.OrdinalIgnoreCase))) return false;
             if (!FileUtils.DirectoryExists(source)) return false;
 
-            var job = new BackupJob(name, source, target, typeInput == 2 ? BackupType.Differential : BackupType.Full);
-            _jobs.Add(job);
-            SaveConfig();
-            RefreshObservableJobs();
+            _config.Jobs.Add(new BackupJob(name, source, target, typeInput == 2 ? BackupType.Differential : BackupType.Full));
+            SaveConfig(); RefreshObservableJobs();
             StatusMessage = _languageManager.GetText("job_created");
             return true;
         }
@@ -227,15 +181,13 @@ namespace EasySave.Core.ViewModels
         public bool DeleteJob(BackupJob job)
         {
             if (job == null) return false;
-            _jobs.Remove(job);
-            SaveConfig();
-            RefreshObservableJobs();
+            _config.Jobs.Remove(job);
+            SaveConfig(); RefreshObservableJobs();
             StatusMessage = _languageManager.GetText("job_deleted");
             return true;
         }
 
         // ===== EXECUTION =====
-
         public async Task ExecuteJob(BackupJob job)
         {
             if (job == null) return;
@@ -250,8 +202,7 @@ namespace EasySave.Core.ViewModels
             var myId = ++_executionId;
             var myCts = new CancellationTokenSource();
             _currentCts = myCts;
-            IsExecuting = true;
-            ResetProgress();
+            IsExecuting = true; ResetProgress();
 
             try
             {
@@ -271,7 +222,6 @@ namespace EasySave.Core.ViewModels
             }
             finally
             {
-                // ===== GUARD: only reset IsExecuting if this execution is still the current one =====
                 if (_executionId == myId) IsExecuting = false;
                 myCts.Dispose();
                 if (_currentCts == myCts) _currentCts = null;
@@ -280,7 +230,7 @@ namespace EasySave.Core.ViewModels
 
         public async Task ExecuteAllJobs()
         {
-            if (_jobs.Count == 0) return;
+            if (_config.Jobs.Count == 0) return;
             if (_monitor.CheckNow())
             {
                 IsBusinessSoftwareDetected = true;
@@ -292,12 +242,11 @@ namespace EasySave.Core.ViewModels
             var myId = ++_executionId;
             var myCts = new CancellationTokenSource();
             _currentCts = myCts;
-            IsExecuting = true;
-            ResetProgress();
+            IsExecuting = true; ResetProgress();
 
             try
             {
-                foreach (var job in _jobs.ToList())
+                foreach (var job in _config.Jobs.ToList())
                 {
                     if (_monitor.CheckNow())
                     {
@@ -325,7 +274,6 @@ namespace EasySave.Core.ViewModels
             }
             finally
             {
-                // ===== GUARD: only reset IsExecuting if this execution is still the current one =====
                 if (_executionId == myId) IsExecuting = false;
                 myCts.Dispose();
                 if (_currentCts == myCts) _currentCts = null;
@@ -334,39 +282,23 @@ namespace EasySave.Core.ViewModels
 
         private async Task ExecuteSingleJob(BackupJob job, CancellationToken token)
         {
-            IBackupStrategy strategy = job.Type == BackupType.Full
-                ? new FullBackupStrategy()
-                : new DifferentialBackupStrategy();
-
-            var logService = LogService.Instance;
-            var execution = new ServiceBackupExecution(strategy, logService, _stateService, _encryptionService);
+            IBackupStrategy strategy = job.Type == BackupType.Full ? new FullBackupStrategy() : new DifferentialBackupStrategy();
+            var execution = new ServiceBackupExecution(strategy, LogService.Instance, _stateService, _encryptionService);
 
             CurrentJobName = job.Name;
             execution.StateUpdated += OnStateUpdated;
-
-            try
-            {
-                await execution.Execute(job, _businessSoftwareName, token);
-            }
-            finally
-            {
-                execution.StateUpdated -= OnStateUpdated;
-            }
+            try { await execution.Execute(job, _config.BusinessSoftwareName, token); }
+            finally { execution.StateUpdated -= OnStateUpdated; }
         }
 
         // ===== PROGRESS =====
-
         private void OnStateUpdated(BackupJobState state)
         {
             ProgressPercent = state.Progression;
             int done = state.TotalFilesToCopy - state.RemainingFiles;
             ProgressText = $"{done} / {state.TotalFilesToCopy}";
-
             string file = state.CurrentSourceFile ?? string.Empty;
-            if (file.Length > 0)
-            {
-                CurrentFileName = Path.GetFileName(file);
-            }
+            if (file.Length > 0) CurrentFileName = Path.GetFileName(file);
             else if (state.Status == BackupStatus.Completed)
             {
                 CurrentFileName = string.Empty;
@@ -376,20 +308,15 @@ namespace EasySave.Core.ViewModels
         }
 
         private void ResetProgress()
-        {
-            CurrentJobName = string.Empty;
-            ProgressPercent = 0;
-            ProgressText = string.Empty;
-            CurrentFileName = string.Empty;
-        }
+        { CurrentJobName = string.Empty; ProgressPercent = 0; ProgressText = string.Empty; CurrentFileName = string.Empty; }
 
         // ===== ENCRYPTION =====
         private void UpdateEncryptionService()
         {
             _encryptionService = new EncryptionService(
                 exePath: Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "CryptoSoft.exe"),
-                key: _encryptionKey,
-                extensions: _encryptionExtensions);
+                key: _config.EncryptionKey,
+                extensions: _config.EncryptionExtensions);
         }
 
         // ===== BUSINESS SOFTWARE =====
@@ -400,112 +327,56 @@ namespace EasySave.Core.ViewModels
             {
                 StatusMessage = _languageManager.GetText("error_business_software");
                 _currentCts?.Cancel();
-                // ===== IMMEDIATE RESET: orphan the running execution via generation counter =====
-                if (_isExecuting)
-                {
-                    _executionId++;
-                    IsExecuting = false;
-                    ResetProgress();
-                }
+                if (_isExecuting) { _executionId++; IsExecuting = false; ResetProgress(); }
             }
-            else
-            {
-                StatusMessage = _languageManager.GetText("business_software_cleared");
-            }
+            else StatusMessage = _languageManager.GetText("business_software_cleared");
         }
 
-        // ===== PERSISTENCE (same logic as MainViewModel / EasySave.Console) =====
+        // ===== PERSISTENCE =====
+        private static readonly JsonSerializerOptions _jsonOpts = new()
+        {
+            WriteIndented = true,
+            PropertyNameCaseInsensitive = true
+        };
+
         private void LoadConfig()
         {
-            if (!File.Exists(_configPath))
-            {
-                _jobs = new List<BackupJob>();
-                _logFormat = EasyLog.Models.LogFormat.Json;
-                LogService.Instance.SetLogFormat(_logFormat);
-                return;
-            }
+            if (!File.Exists(_configPath)) { _config = new AppConfig(); ApplyLogFormat(); return; }
             try
             {
                 string json = File.ReadAllText(_configPath);
-                if (string.IsNullOrWhiteSpace(json))
-                {
-                    _jobs = new List<BackupJob>();
-                    _logFormat = EasyLog.Models.LogFormat.Json;
-                    LogService.Instance.SetLogFormat(_logFormat);
-                    return;
-                }
+                if (string.IsNullOrWhiteSpace(json)) { _config = new AppConfig(); ApplyLogFormat(); return; }
                 json = json.TrimStart();
 
                 if (json.StartsWith("["))
                 {
-                    var jobDtos = JsonSerializer.Deserialize<List<BackupJobDto>>(json);
-                    _jobs = jobDtos?.Select(dto => new BackupJob(
-                        dto.Name ?? "", dto.SourceDirectory ?? "", dto.TargetDirectory ?? "", dto.Type
-                    )).ToList() ?? new List<BackupJob>();
-                    _encryptionKey = "Prosoft123";
-                    _encryptionExtensions = new List<string> { ".txt", ".md", ".pdf" };
-                    _businessSoftwareName = "CalculatorApp";
-                    _logFormat = EasyLog.Models.LogFormat.Json;
+                    var jobs = JsonSerializer.Deserialize<List<BackupJob>>(json, _jsonOpts);
+                    _config = new AppConfig { Jobs = jobs ?? new() };
                 }
                 else
-                {
-                    var configDto = JsonSerializer.Deserialize<AppConfigDto>(json);
-                    if (configDto != null)
-                    {
-                        _encryptionKey = configDto.EncryptionKey ?? "Prosoft123";
-                        var ext = configDto.EncryptionExtensions;
-                        _encryptionExtensions = (ext != null && ext.Count > 0) ? ext : new List<string> { ".txt", ".md", ".pdf" };
-                        _businessSoftwareName = configDto.BusinessSoftwareName ?? "CalculatorApp";
-                        _logFormat = configDto.LogFormat;
-                        _jobs = configDto.Jobs?.Select(dto => new BackupJob(
-                            dto.Name ?? "", dto.SourceDirectory ?? "", dto.TargetDirectory ?? "", dto.Type
-                        )).ToList() ?? new List<BackupJob>();
-                    }
-                    else
-                        _jobs = new List<BackupJob>();
-                }
-                LogService.Instance.SetLogFormat(_logFormat);
+                    _config = JsonSerializer.Deserialize<AppConfig>(json, _jsonOpts) ?? new AppConfig();
             }
-            catch
-            {
-                _jobs = new List<BackupJob>();
-                _logFormat = EasyLog.Models.LogFormat.Json;
-                LogService.Instance.SetLogFormat(_logFormat);
-            }
+            catch { _config = new AppConfig(); }
+            ApplyLogFormat();
         }
+
+        private void ApplyLogFormat() => LogService.Instance.SetLogFormat(_config.LogFormat);
 
         private static EasyLog.Models.LogFormat ParseLogFormat(string? value)
         {
             if (string.IsNullOrWhiteSpace(value)) return EasyLog.Models.LogFormat.Json;
-            var v = value.Trim().ToLowerInvariant();
-            return (v == "xml" || v == "1") ? EasyLog.Models.LogFormat.Xml : EasyLog.Models.LogFormat.Json;
+            return value.Trim().ToLowerInvariant() is "xml" or "1" ? EasyLog.Models.LogFormat.Xml : EasyLog.Models.LogFormat.Json;
         }
 
         private void SaveConfig()
         {
-            var configDto = new AppConfigDto
-            {
-                EncryptionKey = _encryptionKey,
-                EncryptionExtensions = _encryptionExtensions,
-                BusinessSoftwareName = _businessSoftwareName,
-                LogFormat = _logFormat,
-                Jobs = _jobs.Select(j => new BackupJobDto
-                {
-                    Name = j.Name,
-                    SourceDirectory = j.SourceDirectory,
-                    TargetDirectory = j.TargetDirectory,
-                    Type = j.Type
-                }).ToList()
-            };
-            File.WriteAllText(_configPath, JsonSerializer.Serialize(configDto, new JsonSerializerOptions { WriteIndented = true }));
+            try { File.WriteAllText(_configPath, JsonSerializer.Serialize(_config, _jsonOpts)); }
+            catch { }
         }
 
         // ===== HELPERS =====
         private void RefreshObservableJobs()
-        {
-            Jobs.Clear();
-            foreach (var j in _jobs) Jobs.Add(j);
-        }
+        { Jobs.Clear(); foreach (var j in _config.Jobs) Jobs.Add(j); }
 
         private void OnPropertyChanged([CallerMemberName] string? name = null)
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
@@ -515,24 +386,6 @@ namespace EasySave.Core.ViewModels
             _monitor.DetectionChanged -= OnBusinessSoftwareDetectionChanged;
             _monitor.Stop();
             _currentCts?.Dispose();
-        }
-
-        // ===== CONFIG DTO (shared structure with MainViewModel) =====
-        private class AppConfigDto
-        {
-            public string? EncryptionKey { get; set; }
-            public List<string>? EncryptionExtensions { get; set; }
-            public string? BusinessSoftwareName { get; set; }
-            public EasyLog.Models.LogFormat LogFormat { get; set; } = EasyLog.Models.LogFormat.Json;
-            public List<BackupJobDto>? Jobs { get; set; }
-        }
-
-        private class BackupJobDto
-        {
-            public string? Name { get; set; }
-            public string? SourceDirectory { get; set; }
-            public string? TargetDirectory { get; set; }
-            public BackupType Type { get; set; }
         }
     }
 }

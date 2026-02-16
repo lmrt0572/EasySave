@@ -55,7 +55,12 @@ namespace EasySave.Core.Services
                 Console.WriteLine($"\n  [STOP] Business software detected: {businessSoftwareName}. Backup aborted.");
                 Console.ResetColor();
 
-                // #15 - Log the stop event with EventType
+                // FIX: Utiliser SetStopped() au lieu de SetError() pour le logiciel métier
+                var stoppedState = new BackupJobState(job.Name);
+                stoppedState.SetStopped();
+                _stateService.UpdateJobState(stoppedState);
+                StateUpdated?.Invoke(stoppedState);
+
                 LogBusinessSoftwareEvent(job.Name, businessSoftwareName);
                 return;
             }
@@ -99,6 +104,7 @@ namespace EasySave.Core.Services
                     }
                     else
                     {
+                        // FIX: UpdateCurrentFile AVANT CompleteFile pour que les fichiers soient renseignés
                         state.UpdateCurrentFile(source, target);
                         state.CompleteFile(size);
                     }
@@ -120,6 +126,7 @@ namespace EasySave.Core.Services
                 });
 
                 // --- Normal Job Finalization ---
+                // FIX: Finish() met correctement le statut à Completed (statut 2)
                 state.Finish();
                 _stateService.UpdateJobState(state);
                 StateUpdated?.Invoke(state);
@@ -128,13 +135,11 @@ namespace EasySave.Core.Services
             }
             catch (OperationCanceledException)
             {
-                // #14 - Set Stopped status (not Error)
-                state.Status = BackupStatus.Stopped;
-                state.Timestamp = DateTime.Now;
+                // FIX: Utiliser SetStopped() (statut 4 = Stopped) au lieu de mettre Error
+                state.SetStopped();
                 _stateService.UpdateJobState(state);
                 StateUpdated?.Invoke(state);
 
-                // #15 - Log the stop event with EventType and EventDetails
                 LogBusinessSoftwareEvent(job.Name, businessSoftwareName);
 
                 Console.WriteLine();
@@ -143,6 +148,19 @@ namespace EasySave.Core.Services
                 Console.ResetColor();
 
                 // Re-throw so caller (WpfViewModel) can handle it too
+                throw;
+            }
+            catch (Exception ex)
+            {
+                // FIX: Seules les vraies erreurs utilisent SetError() (statut 3 = Error)
+                state.SetError();
+                _stateService.UpdateJobState(state);
+                StateUpdated?.Invoke(state);
+
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"\n  ✕ {job.Name} error: {ex.Message}");
+                Console.ResetColor();
+
                 throw;
             }
             finally
