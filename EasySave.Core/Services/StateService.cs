@@ -1,9 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
-using System.Text;
+using System.Globalization;
 using System.IO;
-using System.Linq;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using EasySave.Core.Models;
 
 namespace EasySave.Core.Services
@@ -11,13 +11,38 @@ namespace EasySave.Core.Services
     // ===== STATE SERVICE =====
     public class StateService : IStateService
     {
+        private const string TimestampFormat = "yyyy-MM-dd HH:mm:ss";
+
         // ===== PRIVATE MEMBERS =====
         private readonly string _stateFilePath;
         private readonly object _lockObject = new object();
         private static readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
         {
-            WriteIndented = true
+            WriteIndented = true,
+            Converters =
+    {
+        new JsonStringEnumConverter(), 
+        new StateDateTimeConverter()
+    }
         };
+
+        private sealed class StateDateTimeConverter : JsonConverter<DateTime>
+        {
+            public override DateTime Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+            {
+                var s = reader.GetString();
+                if (string.IsNullOrEmpty(s))
+                    return default;
+                return DateTime.TryParseExact(s, TimestampFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out var dt)
+                    ? dt
+                    : DateTime.Parse(s);
+            }
+
+            public override void Write(Utf8JsonWriter writer, DateTime value, JsonSerializerOptions options)
+            {
+                writer.WriteStringValue(value.ToString(TimestampFormat, CultureInfo.InvariantCulture));
+            }
+        }
 
         // ===== CONSTRUCTOR =====
 
@@ -43,10 +68,7 @@ namespace EasySave.Core.Services
 
             lock (_lockObject)
             {
-                // Read existing states
                 List<BackupJobState> allStates = ReadAllStates();
-
-                // Find and update or add the state
                 int existingIndex = allStates.FindIndex(s => s.JobName == state.JobName);
                 if (existingIndex >= 0)
                 {
@@ -56,8 +78,6 @@ namespace EasySave.Core.Services
                 {
                     allStates.Add(state);
                 }
-
-                // Write back to file with pretty-print
                 WriteAllStates(allStates);
             }
         }

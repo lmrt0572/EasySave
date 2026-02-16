@@ -14,6 +14,14 @@ namespace EasySave.Core.Models
         public string TargetDirectory { get; set; }
         public BackupType Type { get; set; }
 
+        public BackupJob()
+        {
+            Name = string.Empty;
+            SourceDirectory = string.Empty;
+            TargetDirectory = string.Empty;
+            Type = BackupType.Full;
+        }
+
         // ===== CONSTRUCTOR =====
         public BackupJob(string name, string source, string target, BackupType type)
         {

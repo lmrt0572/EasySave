@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 using EasySave.Core.Models.Enums;
 using EasySave.Core.ViewModels;
 using EasySave.Cmd.Views;
@@ -9,7 +10,7 @@ namespace EasySave.Cmd
     class Program
     {
         // ===== MAIN =====
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
             try
             {
@@ -21,7 +22,7 @@ namespace EasySave.Cmd
                 // ===== MODE SELECTION =====
                 if (args.Length > 0)
                 {
-                    RunCliMode(viewModel, args);
+                    await RunCliMode(viewModel, args);
                 }
                 else
                 {
@@ -39,18 +40,18 @@ namespace EasySave.Cmd
         }
 
         // ===== CLI MODE =====
-        static void RunCliMode(MainViewModel viewModel, string[] args)
+        static async Task RunCliMode(MainViewModel viewModel, string[] args)
         {
             var lang = viewModel.GetLanguageManager();
 
             Console.WriteLine();
-            Console.WriteLine($"Executing jobs: {args[0]}");
+            Console.WriteLine($"Executing jobs: {string.Join(" ", args)}");
             Console.WriteLine();
 
-            viewModel.RunCli(args);
+            await viewModel.RunCli(args);
 
             Console.WriteLine();
-            Console.WriteLine(lang.GetText("job_executed"));
+            Console.WriteLine(lang.GetText("job_executed") ?? "Execution finished.");
         }
     }
 }

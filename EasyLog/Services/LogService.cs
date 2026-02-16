@@ -76,24 +76,13 @@ namespace EasyLog.Services
             {
                 string newFile = Path.ChangeExtension(oldFile, targetExtension.TrimStart('.'));
 
-                // Reading old entries
                 var entries = ReadEntriesFromFile(oldFile, sourceExtension);
-
-                // If nothing could be read, skip this file
                 if (entries.Count == 0)
                     continue;
 
-                // Writing in new format
                 try
                 {
-                    using (var writer = new StreamWriter(newFile, append: false))
-                    {
-                        foreach (var entry in entries)
-                        {
-                            _currentStrategy.WriteEntry(writer, entry);
-                        }
-                    }
-
+                    _currentStrategy.WriteEntries(newFile, entries);
                     File.Delete(oldFile);
                 }
                 catch
