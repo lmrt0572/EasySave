@@ -7,15 +7,19 @@
         Background="{DynamicResource BgPrimary}" FontSize="12" FontFamily="Segoe UI">
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="240"/><ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="240"/>
+            <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
         <!-- ===== SIDEBAR ===== -->
         <Border Grid.Column="0" Background="{DynamicResource BgSidebar}">
             <Grid Margin="20,24,20,20">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
                 <StackPanel Grid.Row="0" Margin="0,0,0,16" HorizontalAlignment="Center">
                     <Image Source="/Assets/Branding/logo_sidebar.png" Width="128" Height="128"
@@ -61,8 +65,11 @@
             <!-- JOBS PAGE -->
             <Grid x:Name="JobsPage" Margin="32,28,32,20">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/><RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
                 <Grid Grid.Row="0" Margin="0,0,0,20">
                     <TextBlock x:Name="TxtJobsTitle" Text="Backup Jobs" FontSize="22" FontWeight="Bold"
@@ -71,14 +78,19 @@
                             HorizontalAlignment="Right" Click="BtnExecuteAll_Click" Padding="18,9"/>
                 </Grid>
                 <Border Grid.Row="1" Background="{DynamicResource BgCard}" CornerRadius="14" Padding="20,16" Margin="0,0,0,20">
-                    <Border.Effect><DropShadowEffect BlurRadius="12" ShadowDepth="2" Opacity="0.06" Color="#553f2a"/></Border.Effect>
+                    <Border.Effect>
+                        <DropShadowEffect BlurRadius="12" ShadowDepth="2" Opacity="0.06" Color="#553f2a"/>
+                    </Border.Effect>
                     <StackPanel>
                         <TextBlock x:Name="TxtCreateTitle" Text="Create New Job" FontSize="14" FontWeight="SemiBold"
                                    Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,12"/>
                         <Grid>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/><ColumnDefinition Width="1.3*"/><ColumnDefinition Width="1.3*"/>
-                                <ColumnDefinition Width="100"/><ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="1.3*"/>
+                                <ColumnDefinition Width="1.3*"/>
+                                <ColumnDefinition Width="140"/>
+                                <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <StackPanel Grid.Column="0" Margin="0,0,8,0">
                                 <TextBlock x:Name="LblFormName" Text="Name" Foreground="{DynamicResource TextMuted}" FontSize="10.5" Margin="0,0,0,4"/>
@@ -86,16 +98,33 @@
                             </StackPanel>
                             <StackPanel Grid.Column="1" Margin="0,0,8,0">
                                 <TextBlock x:Name="LblFormSource" Text="Source" Foreground="{DynamicResource TextMuted}" FontSize="10.5" Margin="0,0,0,4"/>
-                                <TextBox x:Name="TxtSource" Style="{StaticResource CardInputStyle}"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox x:Name="TxtSource" Style="{StaticResource CardInputStyle}" Grid.Column="0"/>
+                                    <Button Grid.Column="1" Content="📁" Style="{StaticResource BtnIcon}" Width="34" Height="34" Margin="4,0,0,0"
+                                            Click="BtnBrowseSource_Click" ToolTip="Browse..."/>
+                                </Grid>
                             </StackPanel>
                             <StackPanel Grid.Column="2" Margin="0,0,8,0">
                                 <TextBlock x:Name="LblFormTarget" Text="Target" Foreground="{DynamicResource TextMuted}" FontSize="10.5" Margin="0,0,0,4"/>
-                                <TextBox x:Name="TxtTarget" Style="{StaticResource CardInputStyle}"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox x:Name="TxtTarget" Style="{StaticResource CardInputStyle}" Grid.Column="0"/>
+                                    <Button Grid.Column="1" Content="📁" Style="{StaticResource BtnIcon}" Width="34" Height="34" Margin="4,0,0,0"
+                                            Click="BtnBrowseTarget_Click" ToolTip="Browse..."/>
+                                </Grid>
                             </StackPanel>
                             <StackPanel Grid.Column="3" Margin="0,0,8,0">
                                 <TextBlock x:Name="LblFormType" Text="Type" Foreground="{DynamicResource TextMuted}" FontSize="10.5" Margin="0,0,0,4"/>
                                 <ComboBox x:Name="CmbType" Style="{StaticResource CardComboStyle}" Height="34" VerticalContentAlignment="Center">
-                                    <ComboBoxItem Content="Full" IsSelected="True"/><ComboBoxItem Content="Differential"/>
+                                    <ComboBoxItem Content="Full" IsSelected="True"/>
+                                    <ComboBoxItem Content="Differential"/>
                                 </ComboBox>
                             </StackPanel>
                             <Button Grid.Column="4" x:Name="BtnCreate" Content="＋  Add" Style="{StaticResource BtnPrimary}"
@@ -105,7 +134,9 @@
                 </Border>
                 <Border Grid.Row="2" x:Name="ProgressPanel" Visibility="Collapsed" Margin="0,0,0,16"
                         Background="{DynamicResource BgCard}" CornerRadius="12" Padding="20,14">
-                    <Border.Effect><DropShadowEffect BlurRadius="8" ShadowDepth="1" Opacity="0.04" Color="#553f2a"/></Border.Effect>
+                    <Border.Effect>
+                        <DropShadowEffect BlurRadius="8" ShadowDepth="1" Opacity="0.04" Color="#553f2a"/>
+                    </Border.Effect>
                     <StackPanel>
                         <Grid Margin="0,0,0,8">
                             <StackPanel Orientation="Horizontal">
@@ -130,6 +161,12 @@
                     </StackPanel>
                 </Border>
                 <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <ScrollViewer.Resources>
+                        <Style TargetType="ScrollBar">
+                            <Setter Property="Width" Value="8"/>
+                            <Setter Property="Background" Value="Transparent"/>
+                        </Style>
+                    </ScrollViewer.Resources>
                     <StackPanel x:Name="JobListPanel"/>
                 </ScrollViewer>
                 <TextBlock Grid.Row="4" x:Name="TxtStatus" Text="Ready" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,10,0,0"/>
@@ -137,15 +174,24 @@
 
             <!-- DASHBOARD PAGE (cards generated in code-behind) -->
             <Grid x:Name="DashboardPage" Visibility="Collapsed" Margin="32,28,32,20">
-                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
                 <TextBlock x:Name="TxtDashboardTitle" Text="Dashboard" FontSize="22" FontWeight="Bold"
                            Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,24"/>
-                <WrapPanel x:Name="DashboardCards" Grid.Row="1" Orientation="Horizontal"/>
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                    <WrapPanel x:Name="DashboardCards" Orientation="Horizontal"/>
+                </ScrollViewer>
             </Grid>
 
             <!-- SETTINGS PAGE -->
             <Grid x:Name="SettingsPage" Visibility="Collapsed" Margin="32,28,32,20">
-                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
                 <TextBlock x:Name="TxtSettingsTitle" Text="Settings" FontSize="22" FontWeight="Bold"
                            Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,20"/>
                 <Border Grid.Row="1" Background="{DynamicResource BgCard}" CornerRadius="10" Padding="4" Margin="0,0,0,24" HorizontalAlignment="Left">
@@ -169,7 +215,22 @@
                             </StackPanel>
                             <TextBlock x:Name="LblSettingsEncryption" Text="Encryption" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,12"/>
                             <TextBlock x:Name="LblSettingsEncKey" Text="Encryption Key" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
-                            <TextBox x:Name="TxtEncryptionKey" Style="{StaticResource CardInputStyle}" Text="Prosoft123" LostFocus="TxtEncryptionKey_LostFocus" Margin="0,0,0,14"/>
+                            <Grid Margin="0,0,0,14">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="TxtEncryptionKey" Style="{StaticResource CardInputStyle}" Text="Prosoft123" 
+                                         LostFocus="TxtEncryptionKey_LostFocus" Grid.Column="0"/>
+                                <PasswordBox x:Name="PwdEncryptionKey" 
+                                             Background="#F5E6D3" Foreground="#553f2a" BorderBrush="#DBBFA0" BorderThickness="1"
+                                             Padding="12,9" FontSize="12" FontFamily="Segoe UI"
+                                             Visibility="Collapsed" Grid.Column="0"
+                                             LostFocus="PwdEncryptionKey_LostFocus"/>
+                                <Button Grid.Column="1" x:Name="BtnToggleKeyVisibility" Content="👁" Style="{StaticResource BtnIcon}" 
+                                        Width="34" Height="34" Margin="4,0,0,0"
+                                        Click="BtnToggleKeyVisibility_Click" ToolTip="Show/Hide key"/>
+                            </Grid>
                             <TextBlock x:Name="LblSettingsEncExt" Text="Target Extensions" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
                             <TextBox x:Name="TxtEncryptionExtensions" Style="{StaticResource CardInputStyle}" Text=".txt, .md, .pdf" LostFocus="TxtEncryptionExtensions_LostFocus"/>
                         </StackPanel>
@@ -205,8 +266,12 @@
             <!-- NOTIFICATION TOAST -->
             <Border x:Name="NotificationToast" HorizontalAlignment="Right" VerticalAlignment="Bottom"
                     Margin="0,0,24,24" Opacity="0" IsHitTestVisible="False" CornerRadius="12" Padding="16,12" MaxWidth="380" MinWidth="220">
-                <Border.Background><SolidColorBrush x:Name="NotifBg" Color="#F2E0CE"/></Border.Background>
-                <Border.Effect><DropShadowEffect BlurRadius="16" ShadowDepth="3" Opacity="0.10" Color="#553f2a"/></Border.Effect>
+                <Border.Background>
+                    <SolidColorBrush x:Name="NotifBg" Color="#F2E0CE"/>
+                </Border.Background>
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="16" ShadowDepth="3" Opacity="0.10" Color="#553f2a"/>
+                </Border.Effect>
                 <StackPanel Orientation="Horizontal">
                     <Ellipse x:Name="NotifDot" Width="8" Height="8" Fill="#a67847" VerticalAlignment="Center" Margin="0,0,10,0"/>
                     <TextBlock x:Name="NotifText" Foreground="{DynamicResource TextPrimary}" FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap" MaxWidth="320"/>
