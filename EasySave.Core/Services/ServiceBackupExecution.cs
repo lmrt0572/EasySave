@@ -37,12 +37,13 @@ namespace EasySave.Core.Services
             _encryptionService = encryptionService ?? throw new ArgumentNullException(nameof(encryptionService));
         }
 
-        // ===== PUBLIC METHODS =====
+        // ===== V2 PUBLIC METHODS (Console compatibility) =====
 
         public async Task Execute(BackupJob job, string businessSoftwareName)
         {
             await Execute(job, businessSoftwareName, CancellationToken.None);
         }
+
         public async Task Execute(BackupJob job, string businessSoftwareName, CancellationToken cancellationToken)
         {
             if (FileUtils.IsProcessRunning(businessSoftwareName))
@@ -134,8 +135,8 @@ namespace EasySave.Core.Services
 
                 throw;
             }
-            catch (Exception ex) { 
-
+            catch (Exception ex)
+            {
                 state.SetError();
                 _stateService.UpdateJobState(state);
                 StateUpdated?.Invoke(state);
@@ -152,7 +153,101 @@ namespace EasySave.Core.Services
             }
         }
 
-        // ===== BUSINESS SOFTWARE LOGGING  =====
+        // ===== V3 PUBLIC METHOD (WPF with JobExecutionContext) =====
+
+
+        /// Execute a backup job with V3 pause/resume/stop support.
+        /// The JobExecutionContext handles pause gating and cancellation.
+
+        public async Task Execute(BackupJob job, JobExecutionContext context)
+        {
+            var state = new BackupJobState(job.Name);
+            var files = Directory.GetFiles(job.SourceDirectory, "*", SearchOption.AllDirectories);
+            long totalSize = files.Sum(f => new FileInfo(f).Length);
+
+            _totalFiles = files.Length;
+            _completedFiles = 0;
+
+            state.StartBackup(_totalFiles, totalSize);
+            state.Status = BackupStatus.Running;
+            _stateService.UpdateJobState(state);
+            StateUpdated?.Invoke(state);
+
+            try
+            {
+                await _strategy.Execute(job, _encryptionService, (source, target, size, timeMs, cryptTime) =>
+                {
+                    // V3 - The pause/stop check is already done in the strategy via context.ThrowIfStoppedOrWaitIfPaused()
+                    // Here we just update state and log
+
+                    _currentFile = source;
+                    _completedFiles++;
+
+                    if (timeMs < 0)
+                    {
+                        state.SetError();
+                    }
+                    else
+                    {
+                        state.UpdateCurrentFile(source, target);
+                        state.CompleteFile(size);
+                        state.Status = BackupStatus.Running;
+                    }
+
+                    _stateService.UpdateJobState(state);
+                    StateUpdated?.Invoke(state);
+
+                    _logService.Write(new ModelLogEntry
+                    {
+                        Timestamp = DateTime.Now,
+                        JobName = job.Name,
+                        SourcePath = source,
+                        TargetPath = target,
+                        FileSize = size,
+                        TransferTimeMs = timeMs,
+                        EncryptionTimeMs = cryptTime
+                    });
+                }, context);
+
+                state.Finish();
+                _stateService.UpdateJobState(state);
+                StateUpdated?.Invoke(state);
+            }
+            catch (OperationCanceledException)
+            {
+                state.SetStopped();
+                _stateService.UpdateJobState(state);
+                StateUpdated?.Invoke(state);
+
+                _logService.Write(new ModelLogEntry
+                {
+                    Timestamp = DateTime.Now,
+                    JobName = job.Name,
+                    EventType = "Job Stopped",
+                    EventDetails = "Stopped by user or system",
+                    SourcePath = string.Empty,
+                    TargetPath = string.Empty,
+                    FileSize = 0,
+                    TransferTimeMs = 0,
+                    EncryptionTimeMs = 0
+                });
+
+                throw;
+            }
+            catch (Exception)
+            {
+                state.SetError();
+                _stateService.UpdateJobState(state);
+                StateUpdated?.Invoke(state);
+                throw;
+            }
+            finally
+            {
+                _logService.Flush();
+            }
+        }
+
+        // ===== BUSINESS SOFTWARE LOGGING =====
         private void LogBusinessSoftwareEvent(string jobName, string processName)
         {
             _logService.Write(new ModelLogEntry
@@ -169,7 +264,7 @@ namespace EasySave.Core.Services
             });
         }
 
-        // ===== PROGRESS BAR =====
+        // ===== PROGRESS BAR (Console) =====
         private void DisplayProgressBar(string jobName)
         {
             double progress = _totalFiles > 0 ? ((double)_completedFiles / _totalFiles) * 100 : 100;
