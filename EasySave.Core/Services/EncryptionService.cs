@@ -15,7 +15,7 @@ namespace EasySave.Core.Services
         private readonly string _key;
         private readonly List<string> _targetedExtensions;
 
-        private static readonly SemaphoreSlim _semaphore = new SemaphoreSlim(2);
+        private static readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
 
         // ===== CONSTRUCTOR =====
         public EncryptionService(string exePath, string key, List<string> extensions)
