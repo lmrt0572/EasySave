@@ -197,6 +197,9 @@ namespace EasyLog.Services
         {
             if (entry == null) throw new ArgumentNullException(nameof(entry));
 
+            entry.Username = Environment.UserName;
+            entry.MachineName = Environment.MachineName;
+
             if (_currentMode == LogMode.Local || _currentMode == LogMode.Both)
             {
                 WriteLocal(entry);

@@ -48,14 +48,13 @@ namespace EasySave.LogServer.Controllers
 
                     // ===== DATA WRAPPING =====
                     // Add metadata to identify which user/machine sent the log
-                    var logWithMachine = new
+                    var logEntry = new
                     {
-                        SourceMachine = machine ?? "Unknown",
-                        Timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
-                        Data = rawEntry
+                        ServerReceivedTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                        Log = rawEntry
                     };
 
-                    logs.Add(logWithMachine);
+                    logs.Add(logEntry);
 
                     // ===== PERSISTENCE =====
                     // Save the updated list back to the JSON file with indentation
