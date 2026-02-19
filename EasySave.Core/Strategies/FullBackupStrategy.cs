@@ -11,8 +11,14 @@ namespace EasySave.Core.Strategies
     // ===== FULL BACKUP STRATEGY =====
     public class FullBackupStrategy : IBackupStrategy
     {
-        // ===== EXECUTION =====
+        // ===== V2 EXECUTION (Console compatibility) =====
         public async Task Execute(BackupJob job, IEncryptionService encryptionService, Action<string, string, long, long, int> onFileCompleted)
+        {
+            await Execute(job, encryptionService, onFileCompleted, context: null!);
+        }
+
+        // ===== V3 EXECUTION (with pause/stop support) =====
+        public async Task Execute(BackupJob job, IEncryptionService encryptionService, Action<string, string, long, long, int> onFileCompleted, JobExecutionContext context)
         {
             if (!FileUtils.DirectoryExists(job.SourceDirectory))
             {
@@ -23,6 +29,9 @@ namespace EasySave.Core.Strategies
 
             foreach (var sourceFile in files)
             {
+
+                context?.ThrowIfStoppedOrWaitIfPaused();
+
                 var relativePath = Path.GetRelativePath(job.SourceDirectory, sourceFile);
                 var targetFile = Path.Combine(job.TargetDirectory, relativePath);
 
@@ -41,6 +50,10 @@ namespace EasySave.Core.Strategies
 
                     long size = FileUtils.GetFileSize(sourceFile);
                     onFileCompleted(sourceFile, targetFile, size, stopwatch.ElapsedMilliseconds, cryptTime);
+                }
+                catch (OperationCanceledException)
+                {
+                    throw; 
                 }
                 catch (Exception)
                 {

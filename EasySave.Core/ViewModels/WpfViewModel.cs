@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -26,9 +27,9 @@ namespace EasySave.Core.ViewModels
         private readonly LanguageManager _languageManager;
         private readonly IStateService _stateService;
         private readonly BusinessSoftwareMonitor _monitor;
-        private CancellationTokenSource? _currentCts;
-        private int _executionId;
         private IEncryptionService _encryptionService = null!;
+
+        private readonly ConcurrentDictionary<string, JobExecutionContext> _runningJobs = new();
 
         private bool _isBusinessSoftwareDetected;
         private bool _isExecuting;
@@ -44,8 +45,11 @@ namespace EasySave.Core.ViewModels
         private bool _isNotificationVisible;
         private int _notificationCounter;
 
-        // ===== OBSERVABLE COLLECTION =====
+        // ===== OBSERVABLE COLLECTIONS =====
         public ObservableCollection<BackupJob> Jobs { get; }
+
+        public ObservableCollection<JobProgressInfo> RunningJobsProgress { get; } = new();
+
         public event PropertyChangedEventHandler? PropertyChanged;
 
         // ===== BINDABLE PROPERTIES =====
@@ -111,7 +115,7 @@ namespace EasySave.Core.ViewModels
             }
         }
 
-        // ===== PROGRESS =====
+        // ===== V2 PROGRESS (kept for compat) =====
         public string CurrentJobName { get => _currentJobName; private set { _currentJobName = value; OnPropertyChanged(); } }
         public int ProgressPercent { get => _progressPercent; private set { _progressPercent = value; OnPropertyChanged(); } }
         public string ProgressText { get => _progressText; private set { _progressText = value; OnPropertyChanged(); } }
@@ -187,7 +191,8 @@ namespace EasySave.Core.ViewModels
             return true;
         }
 
-        // ===== EXECUTION =====
+        // ===== EXECUTION (V3 - with JobExecutionContext) =====
+
         public async Task ExecuteJob(BackupJob job)
         {
             if (job == null) return;
@@ -199,21 +204,26 @@ namespace EasySave.Core.ViewModels
                 return;
             }
 
-            var myId = ++_executionId;
-            var myCts = new CancellationTokenSource();
-            _currentCts = myCts;
-            IsExecuting = true; ResetProgress();
+            IsExecuting = true;
+            ResetProgress();
+
+            var context = new JobExecutionContext(job.Name);
+            _runningJobs[job.Name] = context;
+
+            // V3 - Add progress info for this job
+            var progressInfo = new JobProgressInfo(job.Name);
+            RunningJobsProgress.Add(progressInfo);
 
             try
             {
-                await ExecuteSingleJob(job, myCts.Token);
+                await ExecuteSingleJob(job, context, progressInfo);
                 StatusMessage = _languageManager.GetText("job_executed");
                 ShowNotification(_languageManager.GetText("notif_execution_complete"), "success");
             }
             catch (OperationCanceledException)
             {
-                StatusMessage = _languageManager.GetText("job_stopped_business_software");
-                ShowNotification(_languageManager.GetText("job_stopped_business_software"), "warning");
+                StatusMessage = _languageManager.GetText("job_stopped");
+                ShowNotification(_languageManager.GetText("job_stopped"), "warning");
             }
             catch (Exception ex)
             {
@@ -222,9 +232,10 @@ namespace EasySave.Core.ViewModels
             }
             finally
             {
-                if (_executionId == myId) IsExecuting = false;
-                myCts.Dispose();
-                if (_currentCts == myCts) _currentCts = null;
+                _runningJobs.TryRemove(job.Name, out _);
+                context.Dispose();
+                if (_runningJobs.IsEmpty) IsExecuting = false;
+                _ = RemoveProgressInfoDelayed(progressInfo);
             }
         }
 
@@ -239,10 +250,8 @@ namespace EasySave.Core.ViewModels
                 return;
             }
 
-            var myId = ++_executionId;
-            var myCts = new CancellationTokenSource();
-            _currentCts = myCts;
-            IsExecuting = true; ResetProgress();
+            IsExecuting = true;
+            ResetProgress();
 
             try
             {
@@ -254,18 +263,34 @@ namespace EasySave.Core.ViewModels
                         ShowNotification(_languageManager.GetText("error_business_software"), "warning");
                         break;
                     }
-                    await ExecuteSingleJob(job, myCts.Token);
+
+                    var context = new JobExecutionContext(job.Name);
+                    _runningJobs[job.Name] = context;
+
+                    var progressInfo = new JobProgressInfo(job.Name);
+                    RunningJobsProgress.Add(progressInfo);
+
+                    try
+                    {
+                        await ExecuteSingleJob(job, context, progressInfo);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        break;
+                    }
+                    finally
+                    {
+                        _runningJobs.TryRemove(job.Name, out _);
+                        context.Dispose();
+                        _ = RemoveProgressInfoDelayed(progressInfo);
+                    }
                 }
-                if (!myCts.IsCancellationRequested)
+
+                if (_runningJobs.IsEmpty)
                 {
                     StatusMessage = _languageManager.GetText("job_executed");
                     ShowNotification(_languageManager.GetText("notif_execution_complete"), "success");
                 }
-            }
-            catch (OperationCanceledException)
-            {
-                StatusMessage = _languageManager.GetText("job_stopped_business_software");
-                ShowNotification(_languageManager.GetText("job_stopped_business_software"), "warning");
             }
             catch (Exception ex)
             {
@@ -274,24 +299,119 @@ namespace EasySave.Core.ViewModels
             }
             finally
             {
-                if (_executionId == myId) IsExecuting = false;
-                myCts.Dispose();
-                if (_currentCts == myCts) _currentCts = null;
+                IsExecuting = _runningJobs.Count > 0;
             }
         }
 
-        private async Task ExecuteSingleJob(BackupJob job, CancellationToken token)
+        private async Task ExecuteSingleJob(BackupJob job, JobExecutionContext context, JobProgressInfo progressInfo)
         {
             IBackupStrategy strategy = job.Type == BackupType.Full ? new FullBackupStrategy() : new DifferentialBackupStrategy();
             var execution = new ServiceBackupExecution(strategy, LogService.Instance, _stateService, _encryptionService);
 
             CurrentJobName = job.Name;
-            execution.StateUpdated += OnStateUpdated;
-            try { await execution.Execute(job, _config.BusinessSoftwareName, token); }
-            finally { execution.StateUpdated -= OnStateUpdated; }
+            progressInfo.Status = BackupStatus.Running;
+
+            execution.StateUpdated += (state) =>
+            {
+                OnStateUpdated(state);
+
+                progressInfo.Progression = state.Progression;
+                progressInfo.TotalFiles = state.TotalFilesToCopy;
+                progressInfo.RemainingFiles = state.RemainingFiles;
+                progressInfo.CurrentFile = state.CurrentSourceFile != null ? Path.GetFileName(state.CurrentSourceFile) : string.Empty;
+                progressInfo.Status = state.Status == BackupStatus.Completed ? BackupStatus.Completed : BackupStatus.Running;
+
+                if (context.IsPaused) progressInfo.Status = BackupStatus.Paused;
+            };
+
+            await execution.Execute(job, context);
         }
 
-        // ===== PROGRESS =====
+        private async Task RemoveProgressInfoDelayed(JobProgressInfo info)
+        {
+            info.Status = info.Status == BackupStatus.Error ? BackupStatus.Error : BackupStatus.Completed;
+            await Task.Delay(3000);
+            RunningJobsProgress.Remove(info);
+        }
+
+        // ===== V3 - PER-JOB CONTROLS =====
+
+        public void PauseJob(string jobName)
+        {
+            if (_runningJobs.TryGetValue(jobName, out var context))
+            {
+                context.Pause();
+                UpdateProgressInfoStatus(jobName, BackupStatus.Paused);
+                StatusMessage = _languageManager.GetText("job_paused");
+            }
+        }
+
+        public void ResumeJob(string jobName)
+        {
+            if (_runningJobs.TryGetValue(jobName, out var context))
+            {
+                context.Resume();
+                UpdateProgressInfoStatus(jobName, BackupStatus.Running);
+                StatusMessage = _languageManager.GetText("job_resumed");
+            }
+        }
+
+        public void StopJob(string jobName)
+        {
+            if (_runningJobs.TryGetValue(jobName, out var context))
+            {
+                context.Stop();
+                UpdateProgressInfoStatus(jobName, BackupStatus.Stopped);
+                StatusMessage = _languageManager.GetText("job_stopped");
+            }
+        }
+
+        // ===== V3 - GLOBAL CONTROLS =====
+
+        public void PauseAllJobs()
+        {
+            foreach (var kvp in _runningJobs)
+            {
+                kvp.Value.Pause();
+                UpdateProgressInfoStatus(kvp.Key, BackupStatus.Paused);
+            }
+            StatusMessage = _languageManager.GetText("all_jobs_paused");
+        }
+        public void ResumeAllJobs()
+        {
+            foreach (var kvp in _runningJobs)
+            {
+                kvp.Value.Resume();
+                UpdateProgressInfoStatus(kvp.Key, BackupStatus.Running);
+            }
+            StatusMessage = _languageManager.GetText("all_jobs_resumed");
+        }
+        public void StopAllJobs()
+        {
+            foreach (var kvp in _runningJobs)
+            {
+                kvp.Value.Stop();
+                UpdateProgressInfoStatus(kvp.Key, BackupStatus.Stopped);
+            }
+            StatusMessage = _languageManager.GetText("all_jobs_stopped");
+        }
+
+        public bool IsJobPaused(string jobName)
+        {
+            return _runningJobs.TryGetValue(jobName, out var context) && context.IsPaused;
+        }
+        public bool IsJobRunning(string jobName)
+        {
+            return _runningJobs.ContainsKey(jobName);
+        }
+
+        private void UpdateProgressInfoStatus(string jobName, BackupStatus status)
+        {
+            var info = RunningJobsProgress.FirstOrDefault(p => p.JobName == jobName);
+            if (info != null) info.Status = status;
+        }
+
+        // ===== V2 PROGRESS (compat) =====
         private void OnStateUpdated(BackupJobState state)
         {
             ProgressPercent = state.Progression;
@@ -319,17 +439,39 @@ namespace EasySave.Core.ViewModels
                 extensions: _config.EncryptionExtensions);
         }
 
-        // ===== BUSINESS SOFTWARE =====
+        // ===== BUSINESS SOFTWARE (V3 - pause instead of cancel) =====
         private void OnBusinessSoftwareDetectionChanged(bool detected)
         {
             IsBusinessSoftwareDetected = detected;
             if (detected)
             {
                 StatusMessage = _languageManager.GetText("error_business_software");
-                _currentCts?.Cancel();
-                if (_isExecuting) { _executionId++; IsExecuting = false; ResetProgress(); }
+
+                // V3 - Pause all running jobs instead of cancelling
+                foreach (var kvp in _runningJobs)
+                {
+                    kvp.Value.PauseByMonitor();
+                    UpdateProgressInfoStatus(kvp.Key, BackupStatus.Paused);
+                }
+
+                if (_runningJobs.Count > 0)
+                    ShowNotification(_languageManager.GetText("jobs_paused_business_software"), "warning");
             }
-            else StatusMessage = _languageManager.GetText("business_software_cleared");
+            else
+            {
+                StatusMessage = _languageManager.GetText("business_software_cleared");
+
+                // V3 - Resume jobs that were paused by the monitor (not by user)
+                foreach (var kvp in _runningJobs)
+                {
+                    kvp.Value.ResumeFromMonitor();
+                    if (!kvp.Value.IsPaused)
+                        UpdateProgressInfoStatus(kvp.Key, BackupStatus.Running);
+                }
+
+                if (_runningJobs.Count > 0)
+                    ShowNotification(_languageManager.GetText("jobs_resumed_business_software"), "success");
+            }
         }
 
         // ===== PERSISTENCE =====
@@ -385,7 +527,11 @@ namespace EasySave.Core.ViewModels
         {
             _monitor.DetectionChanged -= OnBusinessSoftwareDetectionChanged;
             _monitor.Stop();
-            _currentCts?.Dispose();
+
+            // V3 - Dispose all running contexts
+            foreach (var kvp in _runningJobs)
+                kvp.Value.Dispose();
+            _runningJobs.Clear();
         }
     }
 }

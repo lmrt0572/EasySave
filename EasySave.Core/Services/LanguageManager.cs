@@ -189,6 +189,36 @@ namespace EasySave.Core.Models.Enums
                 ["notif_settings_saved"] = new() { [Language.English] = "Settings saved", [Language.French] = "Paramètres enregistrés" },
                 ["notif_language_changed"] = new() { [Language.English] = "Language changed to English", [Language.French] = "Langue changée en Français" },
                 ["notif_fields_required"] = new() { [Language.English] = "Please fill all required fields", [Language.French] = "Veuillez remplir tous les champs requis" },
+
+
+
+                // ===== V3 TRANSLATION KEYS =====
+                // Add these entries to the _translations dictionary in LanguageManager.cs
+                // Insert them after the existing "notif_fields_required" entry
+
+                // ===== PLAY / PAUSE / STOP =====
+
+                ["job_paused"] = new() { [Language.English] = "Job paused", [Language.French] = "Travail mis en pause" },
+                ["job_resumed"] = new() { [Language.English] = "Job resumed", [Language.French] = "Travail repris" },
+                ["job_stopped"] = new() { [Language.English] = "Job stopped", [Language.French] = "Travail arrêté" },
+                ["all_jobs_paused"] = new() { [Language.English] = "All jobs paused", [Language.French] = "Tous les travaux en pause" },
+                ["all_jobs_resumed"] = new() { [Language.English] = "All jobs resumed", [Language.French] = "Tous les travaux repris" },
+                ["all_jobs_stopped"] = new() { [Language.English] = "All jobs stopped", [Language.French] = "Tous les travaux arrêtés" },
+
+                // ===== BUSINESS SOFTWARE V3 (pause instead of stop) =====
+                ["jobs_paused_business_software"] = new() { [Language.English] = "All jobs paused — business software detected", [Language.French] = "Tous les travaux en pause — logiciel métier détecté" },
+                ["jobs_resumed_business_software"] = new() { [Language.English] = "Jobs resumed — business software closed", [Language.French] = "Travaux repris — logiciel métier fermé" },
+
+                // ===== PROGRESS UI =====
+                ["progress_running"] = new() { [Language.English] = "Running", [Language.French] = "En cours" },
+                ["progress_paused"] = new() { [Language.English] = "Paused", [Language.French] = "En pause" },
+                ["progress_stopped"] = new() { [Language.English] = "Stopped", [Language.French] = "Arrêté" },
+                ["progress_completed"] = new() { [Language.English] = "Completed", [Language.French] = "Terminé" },
+
+                // ===== GLOBAL CONTROLS =====
+                ["wpf_pause_all"] = new() { [Language.English] = "⏸  Pause All", [Language.French] = "⏸  Tout mettre en pause" },
+                ["wpf_resume_all"] = new() { [Language.English] = "▶  Resume All", [Language.French] = "▶  Tout reprendre" },
+                ["wpf_stop_all"] = new() { [Language.English] = "⏹  Stop All", [Language.French] = "⏹  Tout arrêter" },
             };
         }
 
