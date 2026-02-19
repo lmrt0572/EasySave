@@ -6,8 +6,8 @@ namespace EasyLog.Services
     public interface ILogService
     {
         void Write(ModelLogEntry entry);
-
         void Flush();
         void SetLogFormat(LogFormat format);
+        void SetLogMode(LogMode mode);
     }
 }

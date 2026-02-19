@@ -1,5 +1,6 @@
 using EasyLog.Models;
 using EasyLog.Services.Strategies;
+using System.Net.Http.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -20,6 +21,9 @@ namespace EasyLog.Services
         private readonly object _lockObject = new object();
         private ILogFormatStrategy _currentStrategy;
 
+        private LogMode _currentMode = LogMode.Local;
+        private static readonly HttpClient _httpClient = new HttpClient();
+        private string DockerUrl = "http://localhost:8080/api/logs";
 
         // ===== CONSTRUCTOR =====
         private LogService()
@@ -55,6 +59,10 @@ namespace EasyLog.Services
                 _currentLogFile = null;
             }
         }
+
+        // ===== LOG MODE SETTER =====
+        public void SetLogMode(LogMode mode) => _currentMode = mode;
+
         // ===== MIGRATION =====
 
         private void MigrateLogsToNewFormat(LogFormat newFormat)
@@ -189,6 +197,20 @@ namespace EasyLog.Services
         {
             if (entry == null) throw new ArgumentNullException(nameof(entry));
 
+            if (_currentMode == LogMode.Local || _currentMode == LogMode.Both)
+            {
+                WriteLocal(entry);
+            }
+
+            if (_currentMode == LogMode.Centralized || _currentMode == LogMode.Both)
+            {
+                _ = SendToDocker(entry);
+            }
+        }
+
+        // ===== PRIVATE LOCAL WRITER =====
+        private void WriteLocal(ModelLogEntry entry)
+        {
             lock (_lockObject)
             {
                 string today = DateTime.Now.ToString("yyyy-MM-dd");
@@ -197,14 +219,8 @@ namespace EasyLog.Services
 
                 if (extension == ".xml")
                 {
-                    try
-                    {
-                        WriteXmlEntry(todayFile, entry);
-                    }
-                    catch
-                    {
-                        // Ignore XML logging errors
-                    }
+                    try { WriteXmlEntry(todayFile, entry); }
+                    catch { /* Ignore XML logging errors */ }
                     return;
                 }
 
@@ -224,14 +240,24 @@ namespace EasyLog.Services
                     }
                 }
 
-                try
-                {
-                    _currentStrategy.WriteEntry(_currentWriter!, entry);
-                }
-                catch
-                {
-                    // Ignore logging errors
-                }
+                try { _currentStrategy.WriteEntry(_currentWriter!, entry); }
+                catch { /* Ignore logging errors */ }
+            }
+        }
+
+        // ===== DOCKER TRANSMISSION =====
+        private async Task SendToDocker(ModelLogEntry entry)
+        {
+            try
+            {
+                string machineName = Environment.MachineName;
+                string url = $"{DockerUrl}?machine={Uri.EscapeDataString(machineName)}";
+
+                var response = await _httpClient.PostAsJsonAsync(url, entry);
+                response.EnsureSuccessStatusCode();
+            }
+            catch (Exception)
+            {
             }
         }
 

@@ -1,0 +1,19 @@
+# ===== DOCKER COMPOSER CONFIGURATION =====
+# Orchestrates the log server and its persistent storage
+services:
+  log-server:
+    container_name: easysave-central-logs
+    # ===== BUILD CONFIGURATION =====
+    build:
+      context: .
+      dockerfile: EasySave.LogServer/Dockerfile
+    # ===== NETWORK PORTS =====
+    # Maps local port 8080 to container port 80
+    ports:
+      - "8080:8080"
+    # ===== PERSISTENT VOLUMES =====
+    # Synchronizes your local PC folder with the container folder
+    # This prevents logs from being deleted when the container stops
+    volumes:
+      - ./CentralizedLogs:/app/logs
+    restart: always
