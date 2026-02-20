@@ -34,10 +34,7 @@ namespace EasySave.Core.ViewModels
         private bool _isBusinessSoftwareDetected;
         private bool _isExecuting;
         private string _statusMessage = string.Empty;
-        private string _currentJobName = string.Empty;
-        private int _progressPercent;
-        private string _progressText = string.Empty;
-        private string _currentFileName = string.Empty;
+
 
         // ===== NOTIFICATION STATE =====
         private string _notificationMessage = string.Empty;
@@ -115,11 +112,6 @@ namespace EasySave.Core.ViewModels
             }
         }
 
-        // ===== V2 PROGRESS (kept for compat) =====
-        public string CurrentJobName { get => _currentJobName; private set { _currentJobName = value; OnPropertyChanged(); } }
-        public int ProgressPercent { get => _progressPercent; private set { _progressPercent = value; OnPropertyChanged(); } }
-        public string ProgressText { get => _progressText; private set { _progressText = value; OnPropertyChanged(); } }
-        public string CurrentFileName { get => _currentFileName; private set { _currentFileName = value; OnPropertyChanged(); } }
 
         // ===== NOTIFICATION =====
         public string NotificationMessage { get => _notificationMessage; private set { _notificationMessage = value; OnPropertyChanged(); } }
@@ -205,7 +197,6 @@ namespace EasySave.Core.ViewModels
             }
 
             IsExecuting = true;
-            ResetProgress();
 
             var context = new JobExecutionContext(job.Name);
             _runningJobs[job.Name] = context;
@@ -251,7 +242,6 @@ namespace EasySave.Core.ViewModels
             }
 
             IsExecuting = true;
-            ResetProgress();
 
             try
             {
@@ -308,12 +298,10 @@ namespace EasySave.Core.ViewModels
             IBackupStrategy strategy = job.Type == BackupType.Full ? new FullBackupStrategy() : new DifferentialBackupStrategy();
             var execution = new ServiceBackupExecution(strategy, LogService.Instance, _stateService, _encryptionService);
 
-            CurrentJobName = job.Name;
             progressInfo.Status = BackupStatus.Running;
 
             execution.StateUpdated += (state) =>
             {
-                OnStateUpdated(state);
 
                 progressInfo.Progression = state.Progression;
                 progressInfo.TotalFiles = state.TotalFilesToCopy;
@@ -410,25 +398,6 @@ namespace EasySave.Core.ViewModels
             var info = RunningJobsProgress.FirstOrDefault(p => p.JobName == jobName);
             if (info != null) info.Status = status;
         }
-
-        // ===== V2 PROGRESS (compat) =====
-        private void OnStateUpdated(BackupJobState state)
-        {
-            ProgressPercent = state.Progression;
-            int done = state.TotalFilesToCopy - state.RemainingFiles;
-            ProgressText = $"{done} / {state.TotalFilesToCopy}";
-            string file = state.CurrentSourceFile ?? string.Empty;
-            if (file.Length > 0) CurrentFileName = Path.GetFileName(file);
-            else if (state.Status == BackupStatus.Completed)
-            {
-                CurrentFileName = string.Empty;
-                ProgressText = $"{state.TotalFilesToCopy} / {state.TotalFilesToCopy}";
-                ProgressPercent = 100;
-            }
-        }
-
-        private void ResetProgress()
-        { CurrentJobName = string.Empty; ProgressPercent = 0; ProgressText = string.Empty; CurrentFileName = string.Empty; }
 
         // ===== ENCRYPTION =====
         private void UpdateEncryptionService()

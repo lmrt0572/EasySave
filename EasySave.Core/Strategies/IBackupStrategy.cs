@@ -9,7 +9,7 @@ namespace EasySave.Core.Strategies
     // ===== BACKUP STRATEGY INTERFACE =====
     public interface IBackupStrategy
     {
-        // V2  (kept for Console compatibility)
+        // V1  (kept for Console compatibility)
         Task Execute(BackupJob job, IEncryptionService encryptionService, Action<string, string, long, long, int> onFileCompleted);
 
         // V3  with pause/stop support

@@ -11,13 +11,13 @@ namespace EasySave.Core.Strategies
     // ===== FULL BACKUP STRATEGY =====
     public class FullBackupStrategy : IBackupStrategy
     {
-        // ===== V2 EXECUTION (Console compatibility) =====
+        // =====  EXECUTION CONSOLE =====
         public async Task Execute(BackupJob job, IEncryptionService encryptionService, Action<string, string, long, long, int> onFileCompleted)
         {
             await Execute(job, encryptionService, onFileCompleted, context: null!);
         }
 
-        // ===== V3 EXECUTION (with pause/stop support) =====
+        // ===== EXECUTION WPF =====
         public async Task Execute(BackupJob job, IEncryptionService encryptionService, Action<string, string, long, long, int> onFileCompleted, JobExecutionContext context)
         {
             if (!FileUtils.DirectoryExists(job.SourceDirectory))

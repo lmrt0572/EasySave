@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -296,16 +297,28 @@ namespace EasySave.WPF.Views
         // ===== V3 - PER-JOB PROGRESS CARDS =====
         private void RefreshProgressCards()
         {
-            ProgressItemsControl.Items.Clear();
-            _progressCards.Clear();
+            // Remove cards for jobs no longer in RunningJobsProgress
+            var activeNames = new HashSet<string>(_viewModel.RunningJobsProgress.Select(p => p.JobName));
+            var toRemove = _progressCards.Keys.Where(k => !activeNames.Contains(k)).ToList();
+            foreach (var name in toRemove)
+            {
+                if (_progressCards.TryGetValue(name, out var oldCard))
+                    ProgressItemsControl.Items.Remove(oldCard);
+                _progressCards.Remove(name);
+            }
 
+            // Add cards for new jobs
             foreach (var info in _viewModel.RunningJobsProgress)
             {
-                var card = CreateProgressCard(info);
-                _progressCards[info.JobName] = card;
-                ProgressItemsControl.Items.Add(card);
+                if (!_progressCards.ContainsKey(info.JobName))
+                {
+                    var card = CreateProgressCard(info);
+                    _progressCards[info.JobName] = card;
+                    ProgressItemsControl.Items.Add(card);
 
-                info.PropertyChanged += (s, e) => Dispatcher.Invoke(() => UpdateProgressCard(info));
+                    // Subscribe to per-property updates
+                    info.PropertyChanged += (s, e) => Dispatcher.Invoke(() => UpdateProgressCard(info));
+                }
             }
         }
 
@@ -378,15 +391,20 @@ namespace EasySave.WPF.Views
             progressRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             progressRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-            var progressTrack = new Border { Background = B(TC("BorderLight", "#DBBFA0")), CornerRadius = new CornerRadius(3), Height = 5 };
+            // V3 - Use a Grid with two columns (fill + remaining) instead of absolute Width
+            // This avoids the ActualWidth == 0 timing issue during sequential execution
+            var progressTrack = new Border { Background = B(TC("BorderLight", "#DBBFA0")), CornerRadius = new CornerRadius(3), Height = 5, ClipToBounds = true };
+            var progressInnerGrid = new Grid();
+            progressInnerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(0, GridUnitType.Star) }); // fill column
+            progressInnerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }); // remaining column
             var progressFill = new Border
             {
                 CornerRadius = new CornerRadius(3),
-                HorizontalAlignment = HorizontalAlignment.Left,
-                Width = 0,
                 Background = new LinearGradientBrush(Cl(accent), Cl(TC("AccentLight", "#C99B6D")), 0)
             };
-            progressTrack.Child = progressFill;
+            Grid.SetColumn(progressFill, 0);
+            progressInnerGrid.Children.Add(progressFill);
+            progressTrack.Child = progressInnerGrid;
             Grid.SetColumn(progressTrack, 0);
             progressRow.Children.Add(progressTrack);
 
@@ -465,13 +483,14 @@ namespace EasySave.WPF.Views
                 }
             }
 
-            // Update progress bar
+            // Update progress bar — use star-ratio columns (no ActualWidth dependency)
             if (stack.Children.Count >= 2 && stack.Children[1] is Grid progressRow)
             {
-                if (progressRow.Children[0] is Border track && track.Child is Border fill)
+                if (progressRow.Children[0] is Border track && track.Child is Grid innerGrid && innerGrid.ColumnDefinitions.Count == 2)
                 {
-                    double width = track.ActualWidth > 0 ? track.ActualWidth : 400;
-                    fill.Width = Math.Max(0, width * info.Progression / 100.0);
+                    double pct = Math.Max(0, Math.Min(100, info.Progression));
+                    innerGrid.ColumnDefinitions[0].Width = new GridLength(pct, GridUnitType.Star);
+                    innerGrid.ColumnDefinitions[1].Width = new GridLength(100 - pct, GridUnitType.Star);
                 }
                 if (progressRow.Children.Count >= 2 && progressRow.Children[1] is TextBlock pctTb)
                     pctTb.Text = $"{info.Progression}%";
