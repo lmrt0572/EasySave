@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -36,6 +37,8 @@ namespace EasySave.WPF.Views
         };
 
         private readonly List<Button> _playButtons = new();
+        // V3 - Track progress cards by job name
+        private readonly Dictionary<string, Border> _progressCards = new();
 
         private TextBlock _dashTotalLabel = null!, _dashTotalValue = null!;
         private TextBlock _dashStatusLabel = null!, _dashStatusValue = null!;
@@ -56,22 +59,25 @@ namespace EasySave.WPF.Views
                     case nameof(WpfViewModel.StatusMessage): TxtStatus.Text = _viewModel.StatusMessage; break;
                     case nameof(WpfViewModel.IsBusinessSoftwareDetected):
                         UpdateWarning(); UpdateDashboard();
-                        if (_viewModel.IsBusinessSoftwareDetected) ProgressPanel.Visibility = Visibility.Collapsed;
                         break;
                     case nameof(WpfViewModel.CanExecute): BtnExecuteAll.IsEnabled = _viewModel.CanExecute; SyncPlayButtons(); break;
-                    case nameof(WpfViewModel.IsExecuting):
-                        ProgressPanel.Visibility = _viewModel.IsExecuting ? Visibility.Visible : Visibility.Collapsed;
-                        SyncPlayButtons(); break;
-                    case nameof(WpfViewModel.ProgressPercent): UpdateProgress(); break;
-                    case nameof(WpfViewModel.ProgressText): TxtProgressFiles.Text = _viewModel.ProgressText; break;
-                    case nameof(WpfViewModel.CurrentJobName): TxtProgressJob.Text = _viewModel.CurrentJobName; break;
-                    case nameof(WpfViewModel.CurrentFileName): TxtProgressFile.Text = _viewModel.CurrentFileName; break;
+                    case nameof(WpfViewModel.IsExecuting): SyncPlayButtons(); break;
                     case nameof(WpfViewModel.IsNotificationVisible):
                         if (_viewModel.IsNotificationVisible) ShowNotificationToast(); else HideNotificationToast(); break;
                     case nameof(WpfViewModel.NotificationMessage): NotifText.Text = _viewModel.NotificationMessage; break;
                     case nameof(WpfViewModel.NotificationType): UpdateNotificationStyle(); break;
                     case nameof(WpfViewModel.IsEncryptionActive): UpdateDashboard(); break;
                 }
+            });
+
+            // V3 - Subscribe to RunningJobsProgress collection changes
+            _viewModel.RunningJobsProgress.CollectionChanged += (s, e) => Dispatcher.Invoke(() =>
+            {
+                RefreshProgressCards();
+                GlobalControlsPanel.Visibility = _viewModel.RunningJobsProgress.Count > 0
+                    ? Visibility.Visible
+                    : Visibility.Collapsed;
+                TxtActiveJobsCount.Text = $"{_viewModel.RunningJobsProgress.Count} active job(s)";
             });
 
             TxtBusinessSoftware.Text = _viewModel.BusinessSoftwareName;
@@ -182,7 +188,7 @@ namespace EasySave.WPF.Views
             if (dicts.Count > 0) dicts[0] = theme; else dicts.Insert(0, theme);
             UpdateThemeSelection(); SetActiveNav(_currentPage); SetActiveSettingsTab(_currentSettingsTab);
             UpdateLogFormatButtons(); UpdateLanguageButtons(); RefreshJobList();
-            UpdateWarning(); UpdateDashboard(); UpdateProgressGradient();
+            UpdateWarning(); UpdateDashboard();
             TxtCurrentTheme.Text = $"Active: {Themes[idx].Name}";
             _viewModel.ShowNotification($"Theme: {Themes[idx].Name}", "success");
         }
@@ -224,12 +230,6 @@ namespace EasySave.WPF.Views
                 if (ThemeSwatchPanel.Children[i] is Border bd)
                     bd.BorderBrush = i == _currentThemeIndex ? B(accent) : Brushes.Transparent;
             TxtCurrentTheme.Text = $"Active: {Themes[_currentThemeIndex].Name}";
-        }
-
-        private void UpdateProgressGradient()
-        {
-            GradStart.Color = Cl(TC("AccentPrimary", "#a67847"));
-            GradEnd.Color = Cl(TC("AccentLight", "#C99B6D"));
         }
 
         // ===== DASHBOARD =====
@@ -278,13 +278,230 @@ namespace EasySave.WPF.Views
             DashboardCards.Children.Add(MakeCard(sp4));
         }
 
-        // ===== PROGRESS =====
-        private void UpdateProgress()
+        // ===== V3 - GLOBAL CONTROL HANDLERS =====
+        private void BtnPauseAll_Click(object sender, RoutedEventArgs e)
         {
-            int pct = _viewModel.ProgressPercent;
-            TxtProgressPct.Text = $"{pct}%";
-            double pw = ProgressFill.Parent is Border p ? p.ActualWidth : 500;
-            ProgressFill.Width = Math.Max(0, pw * pct / 100.0);
+            _viewModel.PauseAllJobs();
+        }
+
+        private void BtnResumeAll_Click(object sender, RoutedEventArgs e)
+        {
+            _viewModel.ResumeAllJobs();
+        }
+
+        private void BtnStopAll_Click(object sender, RoutedEventArgs e)
+        {
+            _viewModel.StopAllJobs();
+        }
+
+        // ===== V3 - PER-JOB PROGRESS CARDS =====
+        private void RefreshProgressCards()
+        {
+            // Remove cards for jobs no longer in RunningJobsProgress
+            var activeNames = new HashSet<string>(_viewModel.RunningJobsProgress.Select(p => p.JobName));
+            var toRemove = _progressCards.Keys.Where(k => !activeNames.Contains(k)).ToList();
+            foreach (var name in toRemove)
+            {
+                if (_progressCards.TryGetValue(name, out var oldCard))
+                    ProgressItemsControl.Items.Remove(oldCard);
+                _progressCards.Remove(name);
+            }
+
+            // Add cards for new jobs
+            foreach (var info in _viewModel.RunningJobsProgress)
+            {
+                if (!_progressCards.ContainsKey(info.JobName))
+                {
+                    var card = CreateProgressCard(info);
+                    _progressCards[info.JobName] = card;
+                    ProgressItemsControl.Items.Add(card);
+
+                    // Subscribe to per-property updates
+                    info.PropertyChanged += (s, e) => Dispatcher.Invoke(() => UpdateProgressCard(info));
+                }
+            }
+        }
+
+        private Border CreateProgressCard(JobProgressInfo info)
+        {
+            var (accent, bgCard, tp, ts, tm) = (
+                TC("AccentPrimary", "#a67847"),
+                TC("BgCard", "#F2E0CE"),
+                TC("TextPrimary", "#553f2a"),
+                TC("TextSecondary", "#7A6147"),
+                TC("TextMuted", "#9C8468"));
+
+            var card = new Border
+            {
+                Background = B(bgCard),
+                CornerRadius = new CornerRadius(12),
+                Padding = new Thickness(20, 14, 20, 14),
+                Margin = new Thickness(0, 0, 0, 8),
+                Tag = info.JobName,
+                Effect = new DropShadowEffect { BlurRadius = 8, ShadowDepth = 1, Opacity = 0.04, Color = Cl("#553f2a") }
+            };
+
+            var stack = new StackPanel();
+
+            // Row 1: Job name + status badge + per-job controls
+            var topRow = new Grid();
+            topRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            topRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            topRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var nameBlock = new TextBlock { Text = info.JobName, FontSize = 13, FontWeight = FontWeights.SemiBold, Foreground = B(tp), VerticalAlignment = VerticalAlignment.Center };
+            Grid.SetColumn(nameBlock, 0);
+            topRow.Children.Add(nameBlock);
+
+            var statusBadge = new Border { CornerRadius = new CornerRadius(6), Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 0, 10, 0), VerticalAlignment = VerticalAlignment.Center };
+            var statusText = new TextBlock { FontSize = 10, FontWeight = FontWeights.SemiBold };
+            statusBadge.Child = statusText;
+            Grid.SetColumn(statusBadge, 1);
+            topRow.Children.Add(statusBadge);
+
+            var controls = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+            var btnPause = MkBtn("\u23F8", tm, true);
+            btnPause.Tag = info.JobName;
+            btnPause.ToolTip = "Pause";
+            btnPause.Click += (s, e) =>
+            {
+                e.Handled = true;
+                string jobName = (string)((Button)s).Tag;
+                if (_viewModel.IsJobPaused(jobName)) _viewModel.ResumeJob(jobName);
+                else _viewModel.PauseJob(jobName);
+            };
+            controls.Children.Add(btnPause);
+
+            var btnStop = MkBtn("\u23F9", TC("StatusDanger", "#9B4D4D"), true);
+            btnStop.Tag = info.JobName;
+            btnStop.ToolTip = "Stop";
+            btnStop.Click += (s, e) =>
+            {
+                e.Handled = true;
+                string jobName = (string)((Button)s).Tag;
+                _viewModel.StopJob(jobName);
+            };
+            controls.Children.Add(btnStop);
+            Grid.SetColumn(controls, 2);
+            topRow.Children.Add(controls);
+            stack.Children.Add(topRow);
+
+            // Row 2: Progress bar + percentage
+            var progressRow = new Grid { Margin = new Thickness(0, 8, 0, 0) };
+            progressRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            progressRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            // V3 - Use a Grid with two columns (fill + remaining) instead of absolute Width
+            // This avoids the ActualWidth == 0 timing issue during sequential execution
+            var progressTrack = new Border { Background = B(TC("BorderLight", "#DBBFA0")), CornerRadius = new CornerRadius(3), Height = 5, ClipToBounds = true };
+            var progressInnerGrid = new Grid();
+            progressInnerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(0, GridUnitType.Star) }); // fill column
+            progressInnerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }); // remaining column
+            var progressFill = new Border
+            {
+                CornerRadius = new CornerRadius(3),
+                Background = new LinearGradientBrush(Cl(accent), Cl(TC("AccentLight", "#C99B6D")), 0)
+            };
+            Grid.SetColumn(progressFill, 0);
+            progressInnerGrid.Children.Add(progressFill);
+            progressTrack.Child = progressInnerGrid;
+            Grid.SetColumn(progressTrack, 0);
+            progressRow.Children.Add(progressTrack);
+
+            var pctText = new TextBlock { Text = "0%", Foreground = B(accent), FontSize = 13, FontWeight = FontWeights.Bold, Margin = new Thickness(12, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+            Grid.SetColumn(pctText, 1);
+            progressRow.Children.Add(pctText);
+            stack.Children.Add(progressRow);
+
+            // Row 3: File name + count
+            var fileRow = new Grid { Margin = new Thickness(0, 5, 0, 0) };
+            fileRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            fileRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var fileText = new TextBlock { Foreground = B(tm), FontSize = 10.5, TextTrimming = TextTrimming.CharacterEllipsis };
+            Grid.SetColumn(fileText, 0);
+            fileRow.Children.Add(fileText);
+
+            var filesCountText = new TextBlock { Foreground = B(ts), FontSize = 11, VerticalAlignment = VerticalAlignment.Center };
+            Grid.SetColumn(filesCountText, 1);
+            fileRow.Children.Add(filesCountText);
+            stack.Children.Add(fileRow);
+
+            card.Child = stack;
+            UpdateProgressCardVisuals(card, info);
+            return card;
+        }
+
+        private void UpdateProgressCard(JobProgressInfo info)
+        {
+            if (!_progressCards.TryGetValue(info.JobName, out var card)) return;
+            UpdateProgressCardVisuals(card, info);
+        }
+
+        private void UpdateProgressCardVisuals(Border card, JobProgressInfo info)
+        {
+            var (accent, ss, sd, sw, tm, ts) = (
+                TC("AccentPrimary", "#a67847"),
+                TC("StatusSuccess", "#5A7247"),
+                TC("StatusDanger", "#9B4D4D"),
+                TC("StatusWarning", "#B8860B"),
+                TC("TextMuted", "#9C8468"),
+                TC("TextSecondary", "#7A6147"));
+
+            if (card.Child is not StackPanel stack) return;
+
+            // Update status badge + pause button
+            if (stack.Children[0] is Grid topRow && topRow.Children.Count >= 2)
+            {
+                if (topRow.Children[1] is Border badge && badge.Child is TextBlock statusTb)
+                {
+                    switch (info.Status)
+                    {
+                        case BackupStatus.Running:
+                        case BackupStatus.Active:
+                            badge.Background = new SolidColorBrush(Color.FromArgb(0x20, 0x5A, 0x72, 0x47));
+                            statusTb.Text = _lang.GetText("progress_running"); statusTb.Foreground = B(ss);
+                            break;
+                        case BackupStatus.Paused:
+                            badge.Background = new SolidColorBrush(Color.FromArgb(0x20, 0xB8, 0x86, 0x0B));
+                            statusTb.Text = _lang.GetText("progress_paused"); statusTb.Foreground = B(sw);
+                            break;
+                        case BackupStatus.Stopped:
+                            badge.Background = new SolidColorBrush(Color.FromArgb(0x20, 0x9B, 0x4D, 0x4D));
+                            statusTb.Text = _lang.GetText("progress_stopped"); statusTb.Foreground = B(sd);
+                            break;
+                        case BackupStatus.Completed:
+                            badge.Background = new SolidColorBrush(Color.FromArgb(0x20, 0x5A, 0x72, 0x47));
+                            statusTb.Text = _lang.GetText("progress_completed"); statusTb.Foreground = B(ss);
+                            break;
+                    }
+                }
+                if (topRow.Children.Count >= 3 && topRow.Children[2] is StackPanel controls && controls.Children.Count > 0)
+                {
+                    if (controls.Children[0] is Button btnPause)
+                    { btnPause.Content = info.IsPaused ? "\u25B6" : "\u23F8"; btnPause.ToolTip = info.IsPaused ? "Resume" : "Pause"; }
+                }
+            }
+
+            // Update progress bar — use star-ratio columns (no ActualWidth dependency)
+            if (stack.Children.Count >= 2 && stack.Children[1] is Grid progressRow)
+            {
+                if (progressRow.Children[0] is Border track && track.Child is Grid innerGrid && innerGrid.ColumnDefinitions.Count == 2)
+                {
+                    double pct = Math.Max(0, Math.Min(100, info.Progression));
+                    innerGrid.ColumnDefinitions[0].Width = new GridLength(pct, GridUnitType.Star);
+                    innerGrid.ColumnDefinitions[1].Width = new GridLength(100 - pct, GridUnitType.Star);
+                }
+                if (progressRow.Children.Count >= 2 && progressRow.Children[1] is TextBlock pctTb)
+                    pctTb.Text = $"{info.Progression}%";
+            }
+
+            // Update file info
+            if (stack.Children.Count >= 3 && stack.Children[2] is Grid fileRow)
+            {
+                if (fileRow.Children[0] is TextBlock fileTb) fileTb.Text = info.CurrentFile;
+                if (fileRow.Children.Count >= 2 && fileRow.Children[1] is TextBlock countTb) countTb.Text = $"{info.FilesDone} / {info.TotalFiles}";
+            }
         }
 
         // ===== JOB LIST =====
@@ -342,7 +559,19 @@ namespace EasySave.WPF.Views
             };
             Grid.SetColumn(badge, 1); top.Children.Add(badge);
             var acts = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-            var r = MkBtn("\u25B6", accent, _viewModel.CanExecute); r.Click += (s, e) => { e.Handled = true; ExecuteSingleJob(job); }; _playButtons.Add(r); acts.Children.Add(r);
+            // V3 - Play button: start job or toggle pause
+            var r = MkBtn("\u25B6", accent, _viewModel.CanExecute);
+            r.Click += (s, e) =>
+            {
+                e.Handled = true;
+                if (_viewModel.IsJobRunning(job.Name))
+                {
+                    if (_viewModel.IsJobPaused(job.Name)) _viewModel.ResumeJob(job.Name);
+                    else _viewModel.PauseJob(job.Name);
+                }
+                else ExecuteSingleJob(job);
+            };
+            _playButtons.Add(r); acts.Children.Add(r);
             var ed = MkBtn("\u270F", ts, true); ed.Click += (s, e) => { e.Handled = true; StartEditJob(job); }; acts.Children.Add(ed);
             var dl = MkBtn("\u2715", TC("StatusDanger", "#9B4D4D"), true); dl.Click += (s, e) => { e.Handled = true; DeleteJob(job); }; acts.Children.Add(dl);
             Grid.SetColumn(acts, 2); top.Children.Add(acts);
@@ -397,8 +626,12 @@ namespace EasySave.WPF.Views
             else _viewModel.ShowNotification(_lang.GetText("error_invalid_choice"), "error");
         }
 
-        private async void BtnExecuteAll_Click(object s, RoutedEventArgs e) { await Task.Run(() => _viewModel.ExecuteAllJobs()); Dispatcher.Invoke(RefreshJobList); }
-        private async void ExecuteSingleJob(BackupJob job) { await Task.Run(() => _viewModel.ExecuteJob(job)); Dispatcher.Invoke(RefreshJobList); }
+        private async void BtnExecuteAll_Click(object s, RoutedEventArgs e)
+        { await Task.Run(() => _viewModel.ExecuteAllJobs()); Dispatcher.Invoke(RefreshJobList); }
+
+        private async void ExecuteSingleJob(BackupJob job)
+        { await Task.Run(() => _viewModel.ExecuteJob(job)); Dispatcher.Invoke(RefreshJobList); }
+
         private void DeleteJob(BackupJob job) { _viewModel.DeleteJob(job); RefreshJobList(); _viewModel.ShowNotification(_lang.GetText("notif_job_deleted"), "info"); }
 
         // ===== LANGUAGE =====

@@ -11,6 +11,8 @@ namespace EasySave.Core.Models.Enums
         Active,
         Completed,
         Error,
-        Stopped // V2.0 - Stopped by business software detection
+        Stopped,    
+        Running,    
+        Paused      
     }
 }
