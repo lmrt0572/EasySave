@@ -23,7 +23,7 @@ namespace EasyLog.Services
 
         private LogMode _currentMode = LogMode.Both;
         private static readonly HttpClient _httpClient = new HttpClient();
-        private string DockerUrl = "http://10.176.129.31:8080/api/logs";
+        private string DockerUrl = "http://localhost:8080/api/logs";
 
         // ===== CONSTRUCTOR =====
         private LogService()
