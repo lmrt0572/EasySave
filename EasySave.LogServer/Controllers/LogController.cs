@@ -27,12 +27,20 @@ namespace EasySave.LogServer.Controllers
         {
             try
             {
+
+                if (System.IO.File.Exists(_logDirectory))
+                {
+                    System.IO.File.Delete(_logDirectory);
+                }
+
+                if (!Directory.Exists(_logDirectory))
+                {
+                    Directory.CreateDirectory(_logDirectory);
+                }
                 // ===== FILE INITIALIZATION =====
                 // Create a unique filename per day: yyyy-mm-dd.json
                 string fileName = $"{DateTime.Now:yyyy-MM-dd}.json";
                 string filePath = Path.Combine(_logDirectory, fileName);
-
-                if (!Directory.Exists(_logDirectory)) Directory.CreateDirectory(_logDirectory);
 
                 // ===== THREAD-SAFE WRITE OPERATION =====
                 lock (_fileLock)
@@ -43,7 +51,11 @@ namespace EasySave.LogServer.Controllers
                     if (System.IO.File.Exists(filePath))
                     {
                         var content = System.IO.File.ReadAllText(filePath);
-                        logs = JsonSerializer.Deserialize<List<object>>(content) ?? new();
+                        if (!string.IsNullOrWhiteSpace(content))
+                        {
+                            try { logs = JsonSerializer.Deserialize<List<object>>(content) ?? new(); }
+                            catch { logs = new(); }
+                        }
                     }
 
                     // ===== DATA WRAPPING =====
@@ -62,11 +74,11 @@ namespace EasySave.LogServer.Controllers
                     System.IO.File.WriteAllText(filePath, json);
                 }
 
-                return Ok(new { message = "Log centralisé avec succès" });
+                return Ok(new { message = "Log centralized successfully" });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, $"Erreur interne : {ex.Message}");
+                return StatusCode(500, $"Internal error : {ex.Message} | StackTrace : {ex.StackTrace}");
             }
         }
     }

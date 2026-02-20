@@ -27,5 +27,5 @@ COPY --from=publish /app/publish .
 # Ensure the log directory exists and has correct permissions
 RUN mkdir -p /app/logs && chmod 777 /app/logs
 
-EXPOSE 80
+EXPOSE 8080
 ENTRYPOINT ["dotnet", "EasySave.LogServer.dll"]
