@@ -266,7 +266,11 @@ namespace EasySave.Core.ViewModels
                 var progressInfo = new JobProgressInfo(job.Name);
                 RunningJobsProgress.Add(progressInfo);
 
-                taskList.Add(RunJobWithCleanupAsync(job, context, progressInfo, () => Interlocked.Increment(ref stoppedCount)));
+                var j = job;
+                var ctx = context;
+                var prog = progressInfo;
+                var onStop = (Action)(() => { Interlocked.Increment(ref stoppedCount); });
+                taskList.Add(Task.Run(async () => await RunJobWithCleanupAsync(j, ctx, prog, onStop)));
             }
 
             try
