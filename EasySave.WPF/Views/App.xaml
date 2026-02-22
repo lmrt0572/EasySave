@@ -5,7 +5,7 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary Source="../Styles/Themes/Theme_BeigeClassique.xaml"/>
+                <ResourceDictionary Source="../Styles/Themes/Theme_CaramelProfond.xaml"/>
                 <ResourceDictionary Source="../Styles/ButtonStyles.xaml"/>
                 <ResourceDictionary Source="../Styles/CardStyles.xaml"/>
             </ResourceDictionary.MergedDictionaries>

@@ -257,7 +257,7 @@
                             <TextBlock x:Name="LblSettingsThemeTitle" Text="Color Theme" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,6"/>
                             <TextBlock x:Name="LblSettingsThemeDesc" Text="Select your preferred color palette" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,20"/>
                             <WrapPanel x:Name="ThemeSwatchPanel" Orientation="Horizontal"/>
-                            <TextBlock x:Name="TxtCurrentTheme" Text="Active: Beige Classique" Foreground="{DynamicResource TextSecondary}" FontSize="11" FontWeight="SemiBold" Margin="0,8,0,0"/>
+                            <TextBlock x:Name="TxtCurrentTheme" Text="Active: Caramel Profond" Foreground="{DynamicResource TextSecondary}" FontSize="11" FontWeight="SemiBold" Margin="0,8,0,0"/>
                         </StackPanel>
                     </Grid>
                 </ScrollViewer>

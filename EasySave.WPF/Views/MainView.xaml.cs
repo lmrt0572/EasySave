@@ -28,10 +28,7 @@ namespace EasySave.WPF.Views
 
         private static readonly (string File, string Name, string Bg, string Sidebar, string Accent, string Border, string Text)[] Themes =
         {
-            ("Styles/Themes/Theme_BeigeClassique.xaml", "Beige Classique", "#E7D3C1", "#553f2a", "#a67847", "#C9A882", "#553f2a"),
             ("Styles/Themes/Theme_CaramelProfond.xaml", "Caramel Profond", "#DFC4A8", "#3E2415", "#B5651D", "#C4A07A", "#3E2415"),
-            ("Styles/Themes/Theme_IvoireCreme.xaml",    "Ivoire Cr\u00e8me",    "#F2ECE0", "#5C4033", "#8B6F4E", "#D4C8B4", "#4A3828"),
-            ("Styles/Themes/Theme_TerreCuite.xaml",     "Terre Cuite",     "#E0C0A0", "#6B3A20", "#C06030", "#C8A078", "#5A3018"),
             ("Styles/Themes/Theme_ModeNuit.xaml",       "Mode Nuit",       "#1E1E2E", "#14101E", "#C99B6D", "#3E3E52", "#E0D8CC"),
         };
 
