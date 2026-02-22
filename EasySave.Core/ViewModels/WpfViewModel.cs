@@ -253,38 +253,25 @@ namespace EasySave.Core.ViewModels
             IsExecuting = true;
             ResetProgress();
 
+            var jobsList = _config.Jobs.ToList();
+            var taskList = new List<Task>();
+
+            // ===== PARALLEL EXECUTION =====
+            // Jobs run in parallel (Livrable 3). Business software detection pauses all via OnBusinessSoftwareDetectionChanged.
+            foreach (var job in jobsList)
+            {
+                var context = new JobExecutionContext(job.Name);
+                _runningJobs[job.Name] = context;
+
+                var progressInfo = new JobProgressInfo(job.Name);
+                RunningJobsProgress.Add(progressInfo);
+
+                taskList.Add(RunJobWithCleanupAsync(job, context, progressInfo));
+            }
+
             try
             {
-                foreach (var job in _config.Jobs.ToList())
-                {
-                    if (_monitor.CheckNow())
-                    {
-                        StatusMessage = _languageManager.GetText("error_business_software");
-                        ShowNotification(_languageManager.GetText("error_business_software"), "warning");
-                        break;
-                    }
-
-                    var context = new JobExecutionContext(job.Name);
-                    _runningJobs[job.Name] = context;
-
-                    var progressInfo = new JobProgressInfo(job.Name);
-                    RunningJobsProgress.Add(progressInfo);
-
-                    try
-                    {
-                        await ExecuteSingleJob(job, context, progressInfo);
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        break;
-                    }
-                    finally
-                    {
-                        _runningJobs.TryRemove(job.Name, out _);
-                        context.Dispose();
-                        _ = RemoveProgressInfoDelayed(progressInfo);
-                    }
-                }
+                await Task.WhenAll(taskList);
 
                 if (_runningJobs.IsEmpty)
                 {
@@ -300,6 +287,29 @@ namespace EasySave.Core.ViewModels
             finally
             {
                 IsExecuting = _runningJobs.Count > 0;
+            }
+        }
+
+        // ===== PARALLEL JOB WRAPPER =====
+        private async Task RunJobWithCleanupAsync(BackupJob job, JobExecutionContext context, JobProgressInfo progressInfo)
+        {
+            try
+            {
+                await ExecuteSingleJob(job, context, progressInfo);
+            }
+            catch (OperationCanceledException)
+            {
+                // Per-job stop: other jobs continue
+            }
+            catch (Exception)
+            {
+                progressInfo.Status = BackupStatus.Error;
+            }
+            finally
+            {
+                _runningJobs.TryRemove(job.Name, out _);
+                context.Dispose();
+                _ = RemoveProgressInfoDelayed(progressInfo);
             }
         }
 
@@ -330,7 +340,7 @@ namespace EasySave.Core.ViewModels
         private async Task RemoveProgressInfoDelayed(JobProgressInfo info)
         {
             info.Status = info.Status == BackupStatus.Error ? BackupStatus.Error : BackupStatus.Completed;
-            await Task.Delay(3000);
+            await Task.Delay(1500);
             RunningJobsProgress.Remove(info);
         }
 

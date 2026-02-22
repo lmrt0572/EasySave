@@ -1,4 +1,4 @@
-﻿using EasySave.Core.Models;
+using EasySave.Core.Models;
 using EasySave.Core.Utils;
 using EasySave.Core.Services;
 using System;
@@ -29,7 +29,11 @@ namespace EasySave.Core.Strategies
 
             foreach (var sourceFile in files)
             {
+                // ===== BUSINESS SOFTWARE CHECK =====
 
+                // ===== PRIORITY FILES =====
+                // ===== LARGE FILES =====
+                // ===== STOP REQUESTED =====
                 context?.ThrowIfStoppedOrWaitIfPaused();
 
                 var relativePath = Path.GetRelativePath(job.SourceDirectory, sourceFile);
@@ -40,7 +44,10 @@ namespace EasySave.Core.Strategies
 
                 try
                 {
-                    FileUtils.CopyFile(sourceFile, targetFile);
+                    if (context != null)
+                        await FileUtils.CopyFileAsync(sourceFile, targetFile, context.Token);
+                    else
+                        FileUtils.CopyFile(sourceFile, targetFile);
                     stopwatch.Stop();
 
                     if (encryptionService.IsExtensionTargeted(targetFile))
