@@ -1,25 +1,29 @@
 using EasyLog.Models;
 using EasyLog.Services.Strategies;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 
 namespace EasyLog.Services
 {
     public class LogService : ILogService
     {
+        private const int DebounceMs = 300;
+
         // ===== SINGLETON =====
         private static readonly Lazy<LogService> _instance = new Lazy<LogService>(() => new LogService());
         public static LogService Instance => _instance.Value;
 
         // ===== PRIVATE MEMBERS =====
         private readonly string _logDirectory;
-        private StreamWriter? _currentWriter;
-        private string? _currentLogFile;
-        private readonly object _lockObject = new object();
+        private readonly ConcurrentQueue<ModelLogEntry> _pendingEntries = new();
+        private readonly object _ioLock = new object();
         private ILogFormatStrategy _currentStrategy;
-
+        private readonly Timer? _debounceTimer;
+        private volatile int _writePending;
 
         // ===== CONSTRUCTOR =====
         private LogService()
@@ -31,28 +35,21 @@ namespace EasyLog.Services
                 Directory.CreateDirectory(_logDirectory);
             }
 
-            // Default strategy
             _currentStrategy = new JsonLogStrategy();
+            _debounceTimer = new Timer(_ => FlushDebounced(), null, Timeout.Infinite, Timeout.Infinite);
         }
 
         // ===== STRATEGY SETTER =====
         public void SetLogFormat(LogFormat format)
         {
-            lock (_lockObject)
+            Flush();
+            lock (_ioLock)
             {
-                // Close the current file
-                _currentWriter?.Close();
-                _currentWriter = null;
-
-                // Strategy changing
                 _currentStrategy = format == LogFormat.Json
                     ? new JsonLogStrategy()
                     : new XmlLogStrategy();
 
-                // Migrate existing logs
                 MigrateLogsToNewFormat(format);
-
-                _currentLogFile = null;
             }
         }
         // ===== MIGRATION =====
@@ -184,59 +181,88 @@ namespace EasyLog.Services
 
         }
 
-        // ===== WRITER =====
+        // ===== WRITER (lock-free enqueue) =====
         public void Write(ModelLogEntry entry)
         {
-            if (entry == null) throw new ArgumentNullException(nameof(entry));
+            ArgumentNullException.ThrowIfNull(entry);
+            _pendingEntries.Enqueue(entry);
+            ScheduleDebouncedWrite();
+        }
 
-            lock (_lockObject)
+        // ===== DEBOUNCED WRITE =====
+        private void ScheduleDebouncedWrite()
+        {
+            Interlocked.Exchange(ref _writePending, 1);
+            _debounceTimer?.Change(DebounceMs, Timeout.Infinite);
+        }
+
+        private void FlushDebounced()
+        {
+            if (Interlocked.CompareExchange(ref _writePending, 0, 1) != 1)
+                return;
+            FlushCore();
+        }
+
+        // ===== FLUSH =====
+        public void Flush()
+        {
+            Interlocked.Exchange(ref _writePending, 0);
+            _debounceTimer?.Change(Timeout.Infinite, Timeout.Infinite);
+            FlushCore();
+        }
+
+        private void FlushCore()
+        {
+            var batch = DrainQueue();
+            if (batch.Count == 0)
+                return;
+
+            lock (_ioLock)
             {
-                string today = DateTime.Now.ToString("yyyy-MM-dd");
-                string extension = _currentStrategy.GetFileExtension();
-                string todayFile = Path.Combine(_logDirectory, $"{today}{extension}");
-
-                if (extension == ".xml")
-                {
-                    try
-                    {
-                        WriteXmlEntry(todayFile, entry);
-                    }
-                    catch
-                    {
-                        // Ignore XML logging errors
-                    }
-                    return;
-                }
-
-                if (_currentLogFile != todayFile)
-                {
-                    try
-                    {
-                        _currentWriter?.Close();
-                        _currentWriter = new StreamWriter(todayFile, append: true);
-                        _currentLogFile = todayFile;
-                    }
-                    catch
-                    {
-                        _currentWriter = null;
-                        _currentLogFile = null;
-                        return;
-                    }
-                }
-
                 try
                 {
-                    _currentStrategy.WriteEntry(_currentWriter!, entry);
+                    WriteBatch(_currentStrategy, batch);
                 }
                 catch
                 {
-                    // Ignore logging errors
+                    // Re-enqueue on failure so entries are not lost
+                    foreach (var e in batch)
+                        _pendingEntries.Enqueue(e);
+                    Interlocked.Exchange(ref _writePending, 1);
+                    throw;
                 }
             }
         }
 
-        // ===== XML HELPER =====
-        private void WriteXmlEntry(string filePath, ModelLogEntry entry)
+        private List<ModelLogEntry> DrainQueue()
+        {
+            var batch = new List<ModelLogEntry>();
+            while (_pendingEntries.TryDequeue(out var entry))
+                batch.Add(entry);
+            return batch;
+        }
+
+        private void WriteBatch(ILogFormatStrategy strategy, List<ModelLogEntry> batch)
+        {
+            string today = DateTime.Now.ToString("yyyy-MM-dd");
+            string extension = strategy.GetFileExtension();
+            string filePath = Path.Combine(_logDirectory, $"{today}{extension}");
+
+            if (extension == ".xml")
+            {
+                WriteXmlBatch(filePath, batch);
+            }
+            else
+            {
+                using (var writer = new StreamWriter(filePath, append: true))
+                {
+                    foreach (var entry in batch)
+                        strategy.WriteEntry(writer, entry);
+                }
+            }
+        }
+
+        private void WriteXmlBatch(string filePath, List<ModelLogEntry> batch)
         {
             LogEntries root;
 
@@ -260,7 +286,7 @@ namespace EasyLog.Services
                 root = new LogEntries();
             }
 
-            root.Entries.Add(entry);
+            root.Entries.AddRange(batch);
 
             var settings = new System.Xml.XmlWriterSettings
             {
@@ -272,15 +298,6 @@ namespace EasyLog.Services
             {
                 var serializer = new System.Xml.Serialization.XmlSerializer(typeof(LogEntries));
                 serializer.Serialize(writer, root);
-            }
-        }
-
-        // ===== FLUSH =====
-        public void Flush()
-        {
-            lock (_lockObject)
-            {
-                _currentWriter?.Flush();
             }
         }
     }
