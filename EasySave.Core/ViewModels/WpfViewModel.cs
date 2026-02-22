@@ -101,6 +101,13 @@ namespace EasySave.Core.ViewModels
         // ===== ENCRYPTION STATUS (for Dashboard) =====
         public bool IsEncryptionActive => !string.IsNullOrWhiteSpace(_config.EncryptionKey) && _config.EncryptionExtensions.Count > 0;
 
+        // ===== LARGE FILE THRESHOLD (V3) =====
+        public int LargeFileThresholdKo
+        {
+            get => _config.LargeFileThresholdKo;
+            set { _config.LargeFileThresholdKo = Math.Max(0, value); SaveConfig(); OnPropertyChanged(); }
+        }
+
         // ===== LOG FORMAT =====
         public string LogFormat
         {
@@ -115,7 +122,7 @@ namespace EasySave.Core.ViewModels
             }
         }
 
-        // ===== V2 PROGRESS (kept for compat) =====
+        // ===== PROGRESS (kept for compat) =====
         public string CurrentJobName { get => _currentJobName; private set { _currentJobName = value; OnPropertyChanged(); } }
         public int ProgressPercent { get => _progressPercent; private set { _progressPercent = value; OnPropertyChanged(); } }
         public string ProgressText { get => _progressText; private set { _progressText = value; OnPropertyChanged(); } }
@@ -191,7 +198,7 @@ namespace EasySave.Core.ViewModels
             return true;
         }
 
-        // ===== EXECUTION (V3 - with JobExecutionContext) =====
+        // ===== EXECUTION (with JobExecutionContext) =====
 
         public async Task ExecuteJob(BackupJob job)
         {
@@ -207,10 +214,10 @@ namespace EasySave.Core.ViewModels
             IsExecuting = true;
             ResetProgress();
 
-            var context = new JobExecutionContext(job.Name);
+            var context = new JobExecutionContext(job.Name) { LargeFileThresholdKo = _config.LargeFileThresholdKo };
             _runningJobs[job.Name] = context;
 
-            // V3 - Add progress info for this job
+            // Add progress info for this job
             var progressInfo = new JobProgressInfo(job.Name);
             RunningJobsProgress.Add(progressInfo);
 
@@ -260,7 +267,7 @@ namespace EasySave.Core.ViewModels
             // ===== PARALLEL EXECUTION =====
             foreach (var job in jobsList)
             {
-                var context = new JobExecutionContext(job.Name);
+                var context = new JobExecutionContext(job.Name) { LargeFileThresholdKo = _config.LargeFileThresholdKo };
                 _runningJobs[job.Name] = context;
 
                 var progressInfo = new JobProgressInfo(job.Name);
@@ -360,7 +367,7 @@ namespace EasySave.Core.ViewModels
             RunningJobsProgress.Remove(info);
         }
 
-        // ===== V3 - PER-JOB CONTROLS =====
+        // ===== PER-JOB CONTROLS =====
 
         public void PauseJob(string jobName)
         {
@@ -392,7 +399,7 @@ namespace EasySave.Core.ViewModels
             }
         }
 
-        // ===== V3 - GLOBAL CONTROLS =====
+        // ===== GLOBAL CONTROLS =====
 
         public void PauseAllJobs()
         {
@@ -437,7 +444,7 @@ namespace EasySave.Core.ViewModels
             if (info != null) info.Status = status;
         }
 
-        // ===== V2 PROGRESS (compat) =====
+        // ===== PROGRESS (compat) =====
         private void OnStateUpdated(BackupJobState state)
         {
             ProgressPercent = state.Progression;
@@ -465,7 +472,7 @@ namespace EasySave.Core.ViewModels
                 extensions: _config.EncryptionExtensions);
         }
 
-        // ===== BUSINESS SOFTWARE (V3 - pause instead of cancel) =====
+        // ===== BUSINESS SOFTWARE (pause instead of cancel) =====
         private void OnBusinessSoftwareDetectionChanged(bool detected)
         {
             IsBusinessSoftwareDetected = detected;
@@ -473,7 +480,7 @@ namespace EasySave.Core.ViewModels
             {
                 StatusMessage = _languageManager.GetText("error_business_software");
 
-                // V3 - Pause all running jobs instead of cancelling
+                // Pause all running jobs instead of cancelling
                 foreach (var kvp in _runningJobs)
                 {
                     kvp.Value.PauseByMonitor();
@@ -487,7 +494,7 @@ namespace EasySave.Core.ViewModels
             {
                 StatusMessage = _languageManager.GetText("business_software_cleared");
 
-                // V3 - Resume jobs that were paused by the monitor (not by user)
+                // Resume jobs that were paused by the monitor (not by user)
                 foreach (var kvp in _runningJobs)
                 {
                     kvp.Value.ResumeFromMonitor();
@@ -554,7 +561,7 @@ namespace EasySave.Core.ViewModels
             _monitor.DetectionChanged -= OnBusinessSoftwareDetectionChanged;
             _monitor.Stop();
 
-            // V3 - Dispose all running contexts
+            // Dispose all running contexts
             foreach (var kvp in _runningJobs)
                 kvp.Value.Dispose();
             _runningJobs.Clear();

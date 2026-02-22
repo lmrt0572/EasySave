@@ -84,6 +84,7 @@ namespace EasySave.WPF.Views
             TxtEncryptionKey.Text = _viewModel.EncryptionKey;
             PwdEncryptionKey.Password = _viewModel.EncryptionKey;
             TxtEncryptionExtensions.Text = _viewModel.EncryptionExtensionsText;
+            TxtLargeFileThreshold.Text = _viewModel.LargeFileThresholdKo.ToString();
 
             BuildThemeSwatches(); BuildDashboardCards();
             SetActiveNav("Jobs"); SetActiveSettingsTab(0);
@@ -686,6 +687,14 @@ namespace EasySave.WPF.Views
                 _viewModel.EncryptionExtensionsText = TxtEncryptionExtensions.Text.Trim();
             }
         }
+        private void TxtLargeFileThreshold_LostFocus(object s, RoutedEventArgs e)
+        {
+            if (_viewModel != null && int.TryParse(TxtLargeFileThreshold.Text.Trim(), out int val))
+            {
+                _viewModel.LargeFileThresholdKo = Math.Max(0, val);
+                TxtLargeFileThreshold.Text = _viewModel.LargeFileThresholdKo.ToString();
+            }
+        }
 
         // ===== TRANSLATIONS =====
         private void ApplyTranslations()
@@ -705,7 +714,9 @@ namespace EasySave.WPF.Views
             BtnTabLanguage.Content = _lang.GetText("settings_tab_language"); BtnTabTheme.Content = _lang.GetText("settings_tab_theme");
             LblSettingsBusiness.Text = _lang.GetText("settings_business_software"); LblSettingsBusinessDesc.Text = _lang.GetText("settings_business_desc");
             LblSettingsEncryption.Text = _lang.GetText("settings_encryption"); LblSettingsEncKey.Text = _lang.GetText("settings_encryption_key");
-            LblSettingsEncExt.Text = _lang.GetText("settings_encryption_ext"); LblSettingsLogFormat.Text = _lang.GetText("settings_log_format");
+            LblSettingsEncExt.Text = _lang.GetText("settings_encryption_ext");
+            LblSettingsLargeFile.Text = _lang.GetText("settings_large_file"); LblSettingsLargeFileDesc.Text = _lang.GetText("settings_large_file_desc");
+            LblSettingsLogFormat.Text = _lang.GetText("settings_log_format");
             LblSettingsLogDesc.Text = _lang.GetText("settings_log_desc"); LblSettingsLangTitle.Text = _lang.GetText("settings_language_title");
             LblSettingsLangDesc.Text = _lang.GetText("settings_language_desc"); LblSettingsThemeTitle.Text = _lang.GetText("settings_theme_title");
             LblSettingsThemeDesc.Text = _lang.GetText("settings_theme_desc");
