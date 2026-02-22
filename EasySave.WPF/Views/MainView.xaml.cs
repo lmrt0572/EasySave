@@ -24,7 +24,7 @@ namespace EasySave.WPF.Views
         private int _currentSettingsTab;
         private BackupJob? _editingJob;
         private int _currentThemeIndex;
-        private bool _isKeyVisible = true;
+        private bool _isKeyVisible = false;
 
         private static readonly (string File, string Name, string Bg, string Sidebar, string Accent, string Border, string Text)[] Themes =
         {
@@ -83,6 +83,9 @@ namespace EasySave.WPF.Views
             TxtBusinessSoftware.Text = _viewModel.BusinessSoftwareName;
             TxtEncryptionKey.Text = _viewModel.EncryptionKey;
             PwdEncryptionKey.Password = _viewModel.EncryptionKey;
+            TxtEncryptionKey.Visibility = Visibility.Collapsed;
+            PwdEncryptionKey.Visibility = Visibility.Visible;
+            BtnToggleKeyVisibility.Content = "\U0001F512";
             TxtEncryptionExtensions.Text = _viewModel.EncryptionExtensionsText;
             TxtLargeFileThreshold.Text = _viewModel.LargeFileThresholdKo.ToString();
 

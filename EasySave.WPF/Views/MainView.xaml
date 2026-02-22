@@ -218,13 +218,12 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBox x:Name="TxtEncryptionKey" Style="{StaticResource CardInputStyle}" Text="Prosoft123" 
-                                         LostFocus="TxtEncryptionKey_LostFocus" Grid.Column="0"/>
+                                <TextBox x:Name="TxtEncryptionKey" Style="{StaticResource CardInputStyle}" 
+                                         LostFocus="TxtEncryptionKey_LostFocus" Grid.Column="0" Visibility="Collapsed"/>
                                 <PasswordBox x:Name="PwdEncryptionKey" 
                                              Background="#F5E6D3" Foreground="#553f2a" BorderBrush="#DBBFA0" BorderThickness="1"
                                              Padding="12,9" FontSize="12" FontFamily="Segoe UI"
-                                             Visibility="Collapsed" Grid.Column="0"
-                                             LostFocus="PwdEncryptionKey_LostFocus"/>
+                                             Grid.Column="0" LostFocus="PwdEncryptionKey_LostFocus"/>
                                 <Button Grid.Column="1" x:Name="BtnToggleKeyVisibility" Content="👁" Style="{StaticResource BtnIcon}" 
                                         Width="34" Height="34" Margin="4,0,0,0"
                                         Click="BtnToggleKeyVisibility_Click" ToolTip="Show/Hide key"/>

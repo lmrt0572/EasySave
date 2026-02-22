@@ -22,7 +22,7 @@
         </StackPanel>
         <StackPanel Grid.Row="3" HorizontalAlignment="Center" Margin="0,0,0,28">
             <TextBlock Text="Copyright © ProSoft — All rights reserved" FontSize="10" Foreground="{DynamicResource TextMuted}" HorizontalAlignment="Center"/>
-            <TextBlock Text="Rayane HASSANI — Léo Martin — Bastien Ledoux" FontSize="9" Foreground="{DynamicResource TextOnDarkMuted}" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+            <TextBlock Text="Rayane HASSANI — Léo MARTIN — Bastien LEDOUX" FontSize="9" Foreground="{DynamicResource TextOnDarkMuted}" HorizontalAlignment="Center" Margin="0,4,0,0"/>
         </StackPanel>
     </Grid>
 </Window>

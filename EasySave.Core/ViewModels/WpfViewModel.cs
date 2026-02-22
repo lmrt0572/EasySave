@@ -289,7 +289,7 @@ namespace EasySave.Core.ViewModels
                     if (stoppedCount > 0)
                     {
                         StatusMessage = _languageManager.GetText("job_stopped");
-                        ShowNotification(_languageManager.GetText("all_jobs_stopped"), "warning");
+                        ShowNotification(_languageManager.GetText("all_jobs_stopped"), "error");
                     }
                     else
                     {
