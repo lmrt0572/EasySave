@@ -13,7 +13,7 @@ namespace EasySave.Core.Utils
     {
         // ===== FILE OPERATIONS =====
 
-        private const int CopyBufferSize = 65536; // 64 KB
+        private const int CopyBufferSize = 8192; // 8 KB – smaller = more frequent cancellation checks for immediate Stop All
 
         public static void CopyFile(string source, string dest)
         {

@@ -67,10 +67,9 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>  <!-- Row 0: Title + Execute All -->
                     <RowDefinition Height="Auto"/>  <!-- Row 1: Create form -->
-                    <RowDefinition Height="Auto"/>  <!-- Row 2: V3 Global controls -->
-                    <RowDefinition Height="Auto"/>  <!-- Row 3: V3 Progress cards -->
-                    <RowDefinition Height="*"/>     <!-- Row 4: Job list -->
-                    <RowDefinition Height="Auto"/>  <!-- Row 5: Status text -->
+                    <RowDefinition Height="*"/>     <!-- Row 2: Job list -->
+                    <RowDefinition Height="Auto"/>  <!-- Row 3: V3 Active jobs encart (below list) -->
+                    <RowDefinition Height="Auto"/>  <!-- Row 4: Status text -->
                 </Grid.RowDefinitions>
                 <Grid Grid.Row="0" Margin="0,0,0,20">
                     <TextBlock x:Name="TxtJobsTitle" Text="Backup Jobs" FontSize="22" FontWeight="Bold"
@@ -134,40 +133,41 @@
                     </StackPanel>
                 </Border>
 
-                <!-- V3 - GLOBAL CONTROLS BAR -->
-                <Border Grid.Row="2" x:Name="GlobalControlsPanel" Visibility="Collapsed" Margin="0,0,0,8"
-                        Background="{DynamicResource BgCard}" CornerRadius="10" Padding="14,10">
+                <!-- JOB LIST - scrollbar uses themed ScrollBar style from CardStyles -->
+                <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="0,0,0,8">
+                    <StackPanel x:Name="JobListPanel"/>
+                </ScrollViewer>
+
+                <!-- V3 - ACTIVE JOBS ENCART (below job list, compact) -->
+                <Border Grid.Row="3" x:Name="ActiveJobsEncart" Visibility="Collapsed" Margin="0,0,0,0"
+                        Background="{DynamicResource BgCard}" CornerRadius="10" Padding="12,8">
                     <Border.Effect>
                         <DropShadowEffect BlurRadius="6" ShadowDepth="1" Opacity="0.04" Color="#553f2a"/>
                     </Border.Effect>
-                    <DockPanel>
-                        <TextBlock x:Name="TxtActiveJobsCount" Text="0 active jobs" Foreground="{DynamicResource TextSecondary}" 
-                                   FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" DockPanel.Dock="Left"/>
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                            <Button x:Name="BtnPauseAll" Content="⏸  Pause All" Style="{StaticResource BtnPrimary}" 
-                                    Padding="12,6" Margin="0,0,6,0" FontSize="11" Click="BtnPauseAll_Click"/>
-                            <Button x:Name="BtnResumeAll" Content="▶  Resume All" Style="{StaticResource BtnPrimary}" 
-                                    Padding="12,6" Margin="0,0,6,0" FontSize="11" Click="BtnResumeAll_Click"/>
-                            <Button x:Name="BtnStopAll" Content="⏹  Stop All" Style="{StaticResource BtnPrimary}" 
-                                    Padding="12,6" FontSize="11" Click="BtnStopAll_Click"/>
-                        </StackPanel>
-                    </DockPanel>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <DockPanel Grid.Row="0" Margin="0,0,0,6">
+                            <TextBlock x:Name="TxtActiveJobsCount" Text="0 active jobs" Foreground="{DynamicResource TextSecondary}" 
+                                       FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" DockPanel.Dock="Left"/>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <Button x:Name="BtnPauseAll" Content="││ Pause All" Style="{StaticResource BtnPrimary}" 
+                                        Padding="10,4" Margin="0,0,4,0" FontSize="10" Click="BtnPauseAll_Click"/>
+                                <Button x:Name="BtnResumeAll" Content="▶ Resume All" Style="{StaticResource BtnPrimary}" 
+                                        Padding="10,4" Margin="0,0,4,0" FontSize="10" Click="BtnResumeAll_Click"/>
+                                <Button x:Name="BtnStopAll" Content="■ Stop All" Style="{StaticResource BtnPrimary}" 
+                                        Padding="10,4" FontSize="10" Click="BtnStopAll_Click"/>
+                            </StackPanel>
+                        </DockPanel>
+                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" 
+                                      MaxHeight="140" Margin="0,0,0,0">
+                            <ItemsControl x:Name="ProgressItemsControl"/>
+                        </ScrollViewer>
+                    </Grid>
                 </Border>
-
-                <!-- V3 - PER-JOB PROGRESS CARDS -->
-                <ItemsControl Grid.Row="3" x:Name="ProgressItemsControl" Margin="0,0,0,8"/>
-
-                <!-- JOB LIST -->
-                <ScrollViewer Grid.Row="4" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                    <ScrollViewer.Resources>
-                        <Style TargetType="ScrollBar">
-                            <Setter Property="Width" Value="8"/>
-                            <Setter Property="Background" Value="Transparent"/>
-                        </Style>
-                    </ScrollViewer.Resources>
-                    <StackPanel x:Name="JobListPanel"/>
-                </ScrollViewer>
-                <TextBlock Grid.Row="5" x:Name="TxtStatus" Text="Ready" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,10,0,0"/>
+                <TextBlock Grid.Row="4" x:Name="TxtStatus" Text="Ready" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,8,0,0"/>
             </Grid>
 
             <!-- DASHBOARD PAGE (cards generated in code-behind) -->
