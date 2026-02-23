@@ -731,6 +731,9 @@ namespace EasySave.WPF.Views
             {
                 _viewModel.PriorityExtensionsText = TxtPriorityExtensions.Text.Trim();
                 TxtPriorityExtensions.Text = _viewModel.PriorityExtensionsText;
+            }
+        }
+
         private void CmbLogMode_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (_viewModel != null && CmbLogMode.SelectedItem is ComboBoxItem item)
