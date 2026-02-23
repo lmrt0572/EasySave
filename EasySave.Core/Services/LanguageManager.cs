@@ -159,7 +159,7 @@ namespace EasySave.Core.Models.Enums
 
                 // ===== SETTINGS TABS =====
                 ["settings_tab_general"] = new() { [Language.English] = "General", [Language.French] = "Général" },
-                ["settings_tab_logs"] = new() { [Language.English] = "Logs", [Language.French] = "Journaux" },
+                ["settings_tab_logs"] = new() { [Language.English] = "Logs", [Language.French] = "Logs" },
                 ["settings_tab_language"] = new() { [Language.English] = "Language", [Language.French] = "Langue" },
 
                 // ===== SETTINGS GENERAL =====
@@ -170,8 +170,8 @@ namespace EasySave.Core.Models.Enums
                 ["settings_encryption_ext"] = new() { [Language.English] = "Target Extensions", [Language.French] = "Extensions cibles" },
 
                 // ===== SETTINGS LOGS =====
-                ["settings_log_format"] = new() { [Language.English] = "Log Format", [Language.French] = "Format des journaux" },
-                ["settings_log_desc"] = new() { [Language.English] = "Choose output format for backup logs", [Language.French] = "Choisissez le format de sortie des journaux" },
+                ["settings_log_format"] = new() { [Language.English] = "Log Format", [Language.French] = "Format des Logs" },
+                ["settings_log_desc"] = new() { [Language.English] = "Choose output format for backup logs", [Language.French] = "Choisissez le format de sortie des logs" },
 
                 // ===== SETTINGS LANGUAGE =====
                 ["settings_language_title"] = new() { [Language.English] = "Application Language", [Language.French] = "Langue de l'application" },
