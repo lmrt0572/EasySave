@@ -34,10 +34,7 @@ namespace EasySave.Core.ViewModels
         private bool _isBusinessSoftwareDetected;
         private bool _isExecuting;
         private string _statusMessage = string.Empty;
-        private string _currentJobName = string.Empty;
-        private int _progressPercent;
-        private string _progressText = string.Empty;
-        private string _currentFileName = string.Empty;
+
 
         // ===== NOTIFICATION STATE =====
         private string _notificationMessage = string.Empty;
@@ -212,7 +209,6 @@ namespace EasySave.Core.ViewModels
             }
 
             IsExecuting = true;
-            ResetProgress();
 
             var context = new JobExecutionContext(job.Name) { LargeFileThresholdKo = _config.LargeFileThresholdKo };
             _runningJobs[job.Name] = context;
@@ -258,7 +254,6 @@ namespace EasySave.Core.ViewModels
             }
 
             IsExecuting = true;
-            ResetProgress();
 
             var jobsList = _config.Jobs.ToList();
             var taskList = new List<Task>();
@@ -338,12 +333,10 @@ namespace EasySave.Core.ViewModels
             IBackupStrategy strategy = job.Type == BackupType.Full ? new FullBackupStrategy() : new DifferentialBackupStrategy();
             var execution = new ServiceBackupExecution(strategy, LogService.Instance, _stateService, _encryptionService);
 
-            CurrentJobName = job.Name;
             progressInfo.Status = BackupStatus.Running;
 
             execution.StateUpdated += (state) =>
             {
-                OnStateUpdated(state);
 
                 progressInfo.Progression = state.Progression;
                 progressInfo.TotalFiles = state.TotalFilesToCopy;

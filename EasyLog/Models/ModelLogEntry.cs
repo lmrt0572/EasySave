@@ -47,5 +47,13 @@ namespace EasyLog.Models
 
         [XmlElement("EventDetails", Order = 9)]
         public string? EventDetails { get; set; }
+
+        [XmlElement("Username", Order = 10)]
+        [JsonPropertyName("Username")]
+        public string Username { get; set; } = string.Empty;
+
+        [XmlElement("MachineName", Order = 11)]
+        [JsonPropertyName("MachineName")]
+        public string MachineName { get; set; } = string.Empty;
     }
 }

@@ -5,7 +5,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Threading;
+using System.Net.Http.Json;
 
 namespace EasyLog.Services
 {
@@ -19,11 +19,16 @@ namespace EasyLog.Services
 
         // ===== PRIVATE MEMBERS =====
         private readonly string _logDirectory;
-        private readonly ConcurrentQueue<ModelLogEntry> _pendingEntries = new();
         private readonly object _ioLock = new object();
         private ILogFormatStrategy _currentStrategy;
+
+        private readonly ConcurrentQueue<ModelLogEntry> _pendingEntries = new();
         private readonly Timer? _debounceTimer;
         private volatile int _writePending;
+
+        private LogMode _currentMode = LogMode.Both;
+        private static readonly HttpClient _httpClient = new HttpClient();
+        private string DockerUrl = "http://localhost:8080/api/logs";
 
         // ===== CONSTRUCTOR =====
         private LogService()
@@ -35,6 +40,7 @@ namespace EasyLog.Services
                 Directory.CreateDirectory(_logDirectory);
             }
 
+            // Default strategy
             _currentStrategy = new JsonLogStrategy();
             _debounceTimer = new Timer(_ => FlushDebounced(), null, Timeout.Infinite, Timeout.Infinite);
         }
@@ -45,13 +51,17 @@ namespace EasyLog.Services
             Flush();
             lock (_ioLock)
             {
-                _currentStrategy = format == LogFormat.Json
-                    ? new JsonLogStrategy()
-                    : new XmlLogStrategy();
+                // Strategy changing
+                _currentStrategy = format == LogFormat.Json ? new JsonLogStrategy() : new XmlLogStrategy();
 
+                // Migrate existing logs
                 MigrateLogsToNewFormat(format);
             }
         }
+
+        // ===== LOG MODE SETTER =====
+        public void SetLogMode(LogMode mode) => _currentMode = mode;
+
         // ===== MIGRATION =====
 
         private void MigrateLogsToNewFormat(LogFormat newFormat)
@@ -181,21 +191,33 @@ namespace EasyLog.Services
 
         }
 
-        // ===== WRITER (lock-free enqueue) =====
+        // ===== WRITER =====
         public void Write(ModelLogEntry entry)
         {
-            ArgumentNullException.ThrowIfNull(entry);
-            _pendingEntries.Enqueue(entry);
-            ScheduleDebouncedWrite();
+            if (entry == null) throw new ArgumentNullException(nameof(entry));
+
+            entry.Username = Environment.UserName;
+            entry.MachineName = Environment.MachineName;
+
+            if (_currentMode == LogMode.Centralized || _currentMode == LogMode.Both)
+            {
+                _ = SendToDocker(entry);
+            }
+
+            if (_currentMode == LogMode.Local || _currentMode == LogMode.Both)
+            {
+                _pendingEntries.Enqueue(entry);
+                ScheduleDebouncedWrite();
+            }
         }
 
-        // ===== DEBOUNCED WRITE =====
         private void ScheduleDebouncedWrite()
         {
             Interlocked.Exchange(ref _writePending, 1);
             _debounceTimer?.Change(DebounceMs, Timeout.Infinite);
         }
 
+        // ===== FLUSH =====
         private void FlushDebounced()
         {
             if (Interlocked.CompareExchange(ref _writePending, 0, 1) != 1)
@@ -203,7 +225,6 @@ namespace EasyLog.Services
             FlushCore();
         }
 
-        // ===== FLUSH =====
         public void Flush()
         {
             Interlocked.Exchange(ref _writePending, 0);
@@ -214,8 +235,7 @@ namespace EasyLog.Services
         private void FlushCore()
         {
             var batch = DrainQueue();
-            if (batch.Count == 0)
-                return;
+            if (batch.Count == 0) return;
 
             lock (_ioLock)
             {
@@ -223,13 +243,10 @@ namespace EasyLog.Services
                 {
                     WriteBatch(_currentStrategy, batch);
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // Re-enqueue on failure so entries are not lost
-                    foreach (var e in batch)
-                        _pendingEntries.Enqueue(e);
-                    Interlocked.Exchange(ref _writePending, 1);
-                    throw;
+                    System.Diagnostics.Debug.WriteLine($"Local Write Error: {ex.Message}");
+                    foreach (var e in batch) _pendingEntries.Enqueue(e);
                 }
             }
         }
@@ -262,10 +279,27 @@ namespace EasyLog.Services
             }
         }
 
+        // ===== DOCKER TRANSMISSION =====
+        private async Task SendToDocker(ModelLogEntry entry)
+        {
+            try
+            {
+                string machineName = Environment.MachineName;
+                string url = $"{DockerUrl}?machine={Uri.EscapeDataString(machineName)}";
+
+                var response = await _httpClient.PostAsJsonAsync(url, entry);
+                response.EnsureSuccessStatusCode();
+            }
+            catch (Exception e)
+            {
+                System.Diagnostics.Debug.WriteLine($"DOCKER ERROR: {e.Message}");
+            }
+        }
+
+        // ===== XML HELPER =====
         private void WriteXmlBatch(string filePath, List<ModelLogEntry> batch)
         {
             LogEntries root;
-
             if (File.Exists(filePath))
             {
                 try
@@ -276,24 +310,13 @@ namespace EasyLog.Services
                         root = (LogEntries?)serializer.Deserialize(reader) ?? new LogEntries();
                     }
                 }
-                catch
-                {
-                    root = new LogEntries();
-                }
+                catch { root = new LogEntries(); }
             }
-            else
-            {
-                root = new LogEntries();
-            }
+            else { root = new LogEntries(); }
 
             root.Entries.AddRange(batch);
 
-            var settings = new System.Xml.XmlWriterSettings
-            {
-                Indent = true,
-                OmitXmlDeclaration = false
-            };
-
+            var settings = new System.Xml.XmlWriterSettings { Indent = true };
             using (var writer = System.Xml.XmlWriter.Create(filePath, settings))
             {
                 var serializer = new System.Xml.Serialization.XmlSerializer(typeof(LogEntries));

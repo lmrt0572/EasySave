@@ -57,6 +57,7 @@ namespace EasySave.Core.Strategies
                         await FileUtils.CopyFileAsync(sourceFile, targetFile, context.Token);
                     else
                         FileUtils.CopyFile(sourceFile, targetFile);
+
                     stopwatch.Stop();
 
                     if (encryptionService.IsExtensionTargeted(targetFile))
