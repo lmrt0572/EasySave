@@ -150,6 +150,7 @@ namespace EasySave.Core.Services
             finally
             {
                 _logService.Flush();
+                _stateService.Flush();
             }
         }
 
@@ -244,6 +245,7 @@ namespace EasySave.Core.Services
             finally
             {
                 _logService.Flush();
+                _stateService.Flush();
             }
         }
 

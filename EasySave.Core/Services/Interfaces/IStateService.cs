@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using EasySave.Core.Models;
@@ -9,5 +9,6 @@ namespace EasySave.Core.Services
     public interface IStateService
     {
         void UpdateJobState(BackupJobState state);
+        void Flush();
     }
 }

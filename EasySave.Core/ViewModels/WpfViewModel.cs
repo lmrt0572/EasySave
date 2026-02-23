@@ -98,6 +98,13 @@ namespace EasySave.Core.ViewModels
         // ===== ENCRYPTION STATUS (for Dashboard) =====
         public bool IsEncryptionActive => !string.IsNullOrWhiteSpace(_config.EncryptionKey) && _config.EncryptionExtensions.Count > 0;
 
+        // ===== LARGE FILE THRESHOLD (V3) =====
+        public int LargeFileThresholdKo
+        {
+            get => _config.LargeFileThresholdKo;
+            set { _config.LargeFileThresholdKo = Math.Max(0, value); SaveConfig(); OnPropertyChanged(); }
+        }
+
         // ===== LOG FORMAT =====
         public string LogFormat
         {
@@ -112,6 +119,11 @@ namespace EasySave.Core.ViewModels
             }
         }
 
+        // ===== PROGRESS (kept for compat) =====
+        public string CurrentJobName { get => _currentJobName; private set { _currentJobName = value; OnPropertyChanged(); } }
+        public int ProgressPercent { get => _progressPercent; private set { _progressPercent = value; OnPropertyChanged(); } }
+        public string ProgressText { get => _progressText; private set { _progressText = value; OnPropertyChanged(); } }
+        public string CurrentFileName { get => _currentFileName; private set { _currentFileName = value; OnPropertyChanged(); } }
 
         // ===== NOTIFICATION =====
         public string NotificationMessage { get => _notificationMessage; private set { _notificationMessage = value; OnPropertyChanged(); } }
@@ -183,7 +195,7 @@ namespace EasySave.Core.ViewModels
             return true;
         }
 
-        // ===== EXECUTION (V3 - with JobExecutionContext) =====
+        // ===== EXECUTION (with JobExecutionContext) =====
 
         public async Task ExecuteJob(BackupJob job)
         {
@@ -198,10 +210,10 @@ namespace EasySave.Core.ViewModels
 
             IsExecuting = true;
 
-            var context = new JobExecutionContext(job.Name);
+            var context = new JobExecutionContext(job.Name) { LargeFileThresholdKo = _config.LargeFileThresholdKo };
             _runningJobs[job.Name] = context;
 
-            // V3 - Add progress info for this job
+            // Add progress info for this job
             var progressInfo = new JobProgressInfo(job.Name);
             RunningJobsProgress.Add(progressInfo);
 
@@ -243,43 +255,42 @@ namespace EasySave.Core.ViewModels
 
             IsExecuting = true;
 
+            var jobsList = _config.Jobs.ToList();
+            var taskList = new List<Task>();
+            var stoppedCount = 0;
+
+            // ===== PARALLEL EXECUTION =====
+            foreach (var job in jobsList)
+            {
+                var context = new JobExecutionContext(job.Name) { LargeFileThresholdKo = _config.LargeFileThresholdKo };
+                _runningJobs[job.Name] = context;
+
+                var progressInfo = new JobProgressInfo(job.Name);
+                RunningJobsProgress.Add(progressInfo);
+
+                var j = job;
+                var ctx = context;
+                var prog = progressInfo;
+                var onStop = (Action)(() => { Interlocked.Increment(ref stoppedCount); });
+                taskList.Add(Task.Run(async () => await RunJobWithCleanupAsync(j, ctx, prog, onStop)));
+            }
+
             try
             {
-                foreach (var job in _config.Jobs.ToList())
-                {
-                    if (_monitor.CheckNow())
-                    {
-                        StatusMessage = _languageManager.GetText("error_business_software");
-                        ShowNotification(_languageManager.GetText("error_business_software"), "warning");
-                        break;
-                    }
-
-                    var context = new JobExecutionContext(job.Name);
-                    _runningJobs[job.Name] = context;
-
-                    var progressInfo = new JobProgressInfo(job.Name);
-                    RunningJobsProgress.Add(progressInfo);
-
-                    try
-                    {
-                        await ExecuteSingleJob(job, context, progressInfo);
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        break;
-                    }
-                    finally
-                    {
-                        _runningJobs.TryRemove(job.Name, out _);
-                        context.Dispose();
-                        _ = RemoveProgressInfoDelayed(progressInfo);
-                    }
-                }
+                await Task.WhenAll(taskList);
 
                 if (_runningJobs.IsEmpty)
                 {
-                    StatusMessage = _languageManager.GetText("job_executed");
-                    ShowNotification(_languageManager.GetText("notif_execution_complete"), "success");
+                    if (stoppedCount > 0)
+                    {
+                        StatusMessage = _languageManager.GetText("job_stopped");
+                        ShowNotification(_languageManager.GetText("all_jobs_stopped"), "error");
+                    }
+                    else
+                    {
+                        StatusMessage = _languageManager.GetText("job_executed");
+                        ShowNotification(_languageManager.GetText("notif_execution_complete"), "success");
+                    }
                 }
             }
             catch (Exception ex)
@@ -290,6 +301,30 @@ namespace EasySave.Core.ViewModels
             finally
             {
                 IsExecuting = _runningJobs.Count > 0;
+            }
+        }
+
+        // ===== PARALLEL JOB WRAPPER =====
+        private async Task RunJobWithCleanupAsync(BackupJob job, JobExecutionContext context, JobProgressInfo progressInfo, Action? onStopped = null)
+        {
+            try
+            {
+                await ExecuteSingleJob(job, context, progressInfo);
+            }
+            catch (OperationCanceledException)
+            {
+                progressInfo.Status = BackupStatus.Stopped;
+                onStopped?.Invoke();
+            }
+            catch (Exception)
+            {
+                progressInfo.Status = BackupStatus.Error;
+            }
+            finally
+            {
+                _runningJobs.TryRemove(job.Name, out _);
+                context.Dispose();
+                _ = RemoveProgressInfoDelayed(progressInfo, immediate: progressInfo.Status == BackupStatus.Stopped);
             }
         }
 
@@ -315,14 +350,17 @@ namespace EasySave.Core.ViewModels
             await execution.Execute(job, context);
         }
 
-        private async Task RemoveProgressInfoDelayed(JobProgressInfo info)
+        private async Task RemoveProgressInfoDelayed(JobProgressInfo info, bool immediate = false)
         {
-            info.Status = info.Status == BackupStatus.Error ? BackupStatus.Error : BackupStatus.Completed;
-            await Task.Delay(3000);
+            if (info.Status == BackupStatus.Error) info.Status = BackupStatus.Error;
+            else if (info.Status != BackupStatus.Stopped) info.Status = BackupStatus.Completed;
+
+            int delayMs = immediate || info.Status == BackupStatus.Stopped ? 0 : 1500;
+            if (delayMs > 0) await Task.Delay(delayMs);
             RunningJobsProgress.Remove(info);
         }
 
-        // ===== V3 - PER-JOB CONTROLS =====
+        // ===== PER-JOB CONTROLS =====
 
         public void PauseJob(string jobName)
         {
@@ -354,7 +392,7 @@ namespace EasySave.Core.ViewModels
             }
         }
 
-        // ===== V3 - GLOBAL CONTROLS =====
+        // ===== GLOBAL CONTROLS =====
 
         public void PauseAllJobs()
         {
@@ -399,6 +437,25 @@ namespace EasySave.Core.ViewModels
             if (info != null) info.Status = status;
         }
 
+        // ===== PROGRESS (compat) =====
+        private void OnStateUpdated(BackupJobState state)
+        {
+            ProgressPercent = state.Progression;
+            int done = state.TotalFilesToCopy - state.RemainingFiles;
+            ProgressText = $"{done} / {state.TotalFilesToCopy}";
+            string file = state.CurrentSourceFile ?? string.Empty;
+            if (file.Length > 0) CurrentFileName = Path.GetFileName(file);
+            else if (state.Status == BackupStatus.Completed)
+            {
+                CurrentFileName = string.Empty;
+                ProgressText = $"{state.TotalFilesToCopy} / {state.TotalFilesToCopy}";
+                ProgressPercent = 100;
+            }
+        }
+
+        private void ResetProgress()
+        { CurrentJobName = string.Empty; ProgressPercent = 0; ProgressText = string.Empty; CurrentFileName = string.Empty; }
+
         // ===== ENCRYPTION =====
         private void UpdateEncryptionService()
         {
@@ -408,7 +465,7 @@ namespace EasySave.Core.ViewModels
                 extensions: _config.EncryptionExtensions);
         }
 
-        // ===== BUSINESS SOFTWARE (V3 - pause instead of cancel) =====
+        // ===== BUSINESS SOFTWARE (pause instead of cancel) =====
         private void OnBusinessSoftwareDetectionChanged(bool detected)
         {
             IsBusinessSoftwareDetected = detected;
@@ -416,7 +473,7 @@ namespace EasySave.Core.ViewModels
             {
                 StatusMessage = _languageManager.GetText("error_business_software");
 
-                // V3 - Pause all running jobs instead of cancelling
+                // Pause all running jobs instead of cancelling
                 foreach (var kvp in _runningJobs)
                 {
                     kvp.Value.PauseByMonitor();
@@ -430,7 +487,7 @@ namespace EasySave.Core.ViewModels
             {
                 StatusMessage = _languageManager.GetText("business_software_cleared");
 
-                // V3 - Resume jobs that were paused by the monitor (not by user)
+                // Resume jobs that were paused by the monitor (not by user)
                 foreach (var kvp in _runningJobs)
                 {
                     kvp.Value.ResumeFromMonitor();
@@ -497,7 +554,7 @@ namespace EasySave.Core.ViewModels
             _monitor.DetectionChanged -= OnBusinessSoftwareDetectionChanged;
             _monitor.Stop();
 
-            // V3 - Dispose all running contexts
+            // Dispose all running contexts
             foreach (var kvp in _runningJobs)
                 kvp.Value.Dispose();
             _runningJobs.Clear();

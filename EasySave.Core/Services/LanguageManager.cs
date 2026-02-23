@@ -179,6 +179,8 @@ namespace EasySave.Core.Models.Enums
                 ["settings_tab_theme"] = new() { [Language.English] = "Theme", [Language.French] = "Thème" },
                 ["settings_theme_title"] = new() { [Language.English] = "Color Theme", [Language.French] = "Thème de couleurs" },
                 ["settings_theme_desc"] = new() { [Language.English] = "Select your preferred color palette", [Language.French] = "Sélectionnez votre palette de couleurs préférée" },
+                ["settings_large_file"] = new() { [Language.English] = "Large File Threshold (Ko)", [Language.French] = "Seuil fichier volumineux (Ko)" },
+                ["settings_large_file_desc"] = new() { [Language.English] = "Only one file above this size transfers at a time (0 = disabled)", [Language.French] = "Un seul fichier au-dessus de ce seuil à la fois (0 = désactivé)" },
 
                 // ===== NOTIFICATIONS =====
                 ["notif_job_created"] = new() { [Language.English] = "Job created successfully", [Language.French] = "Travail créé avec succès" },

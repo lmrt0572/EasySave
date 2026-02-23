@@ -25,14 +25,11 @@ namespace EasySave.WPF.Views
         private int _currentSettingsTab;
         private BackupJob? _editingJob;
         private int _currentThemeIndex;
-        private bool _isKeyVisible = true;
+        private bool _isKeyVisible = false;
 
         private static readonly (string File, string Name, string Bg, string Sidebar, string Accent, string Border, string Text)[] Themes =
         {
-            ("Styles/Themes/Theme_BeigeClassique.xaml", "Beige Classique", "#E7D3C1", "#553f2a", "#a67847", "#C9A882", "#553f2a"),
             ("Styles/Themes/Theme_CaramelProfond.xaml", "Caramel Profond", "#DFC4A8", "#3E2415", "#B5651D", "#C4A07A", "#3E2415"),
-            ("Styles/Themes/Theme_IvoireCreme.xaml",    "Ivoire Cr\u00e8me",    "#F2ECE0", "#5C4033", "#8B6F4E", "#D4C8B4", "#4A3828"),
-            ("Styles/Themes/Theme_TerreCuite.xaml",     "Terre Cuite",     "#E0C0A0", "#6B3A20", "#C06030", "#C8A078", "#5A3018"),
             ("Styles/Themes/Theme_ModeNuit.xaml",       "Mode Nuit",       "#1E1E2E", "#14101E", "#C99B6D", "#3E3E52", "#E0D8CC"),
         };
 
@@ -74,7 +71,8 @@ namespace EasySave.WPF.Views
             _viewModel.RunningJobsProgress.CollectionChanged += (s, e) => Dispatcher.Invoke(() =>
             {
                 RefreshProgressCards();
-                GlobalControlsPanel.Visibility = _viewModel.RunningJobsProgress.Count > 0
+                UpdateJobCardsRunningState();
+                ActiveJobsEncart.Visibility = _viewModel.RunningJobsProgress.Count > 0
                     ? Visibility.Visible
                     : Visibility.Collapsed;
                 TxtActiveJobsCount.Text = $"{_viewModel.RunningJobsProgress.Count} active job(s)";
@@ -83,7 +81,11 @@ namespace EasySave.WPF.Views
             TxtBusinessSoftware.Text = _viewModel.BusinessSoftwareName;
             TxtEncryptionKey.Text = _viewModel.EncryptionKey;
             PwdEncryptionKey.Password = _viewModel.EncryptionKey;
+            TxtEncryptionKey.Visibility = Visibility.Collapsed;
+            PwdEncryptionKey.Visibility = Visibility.Visible;
+            BtnToggleKeyVisibility.Content = "\U0001F512";
             TxtEncryptionExtensions.Text = _viewModel.EncryptionExtensionsText;
+            TxtLargeFileThreshold.Text = _viewModel.LargeFileThresholdKo.ToString();
 
             BuildThemeSwatches(); BuildDashboardCards();
             SetActiveNav("Jobs"); SetActiveSettingsTab(0);
@@ -334,11 +336,11 @@ namespace EasySave.WPF.Views
             var card = new Border
             {
                 Background = B(bgCard),
-                CornerRadius = new CornerRadius(12),
-                Padding = new Thickness(20, 14, 20, 14),
-                Margin = new Thickness(0, 0, 0, 8),
+                CornerRadius = new CornerRadius(8),
+                Padding = new Thickness(10, 5, 10, 5),
+                Margin = new Thickness(0, 0, 0, 4),
                 Tag = info.JobName,
-                Effect = new DropShadowEffect { BlurRadius = 8, ShadowDepth = 1, Opacity = 0.04, Color = Cl("#553f2a") }
+                Effect = new DropShadowEffect { BlurRadius = 4, ShadowDepth = 1, Opacity = 0.03, Color = Cl("#553f2a") }
             };
 
             var stack = new StackPanel();
@@ -349,18 +351,18 @@ namespace EasySave.WPF.Views
             topRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             topRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-            var nameBlock = new TextBlock { Text = info.JobName, FontSize = 13, FontWeight = FontWeights.SemiBold, Foreground = B(tp), VerticalAlignment = VerticalAlignment.Center };
+            var nameBlock = new TextBlock { Text = info.JobName, FontSize = 11, FontWeight = FontWeights.SemiBold, Foreground = B(tp), VerticalAlignment = VerticalAlignment.Center };
             Grid.SetColumn(nameBlock, 0);
             topRow.Children.Add(nameBlock);
 
-            var statusBadge = new Border { CornerRadius = new CornerRadius(6), Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 0, 10, 0), VerticalAlignment = VerticalAlignment.Center };
-            var statusText = new TextBlock { FontSize = 10, FontWeight = FontWeights.SemiBold };
+            var statusBadge = new Border { CornerRadius = new CornerRadius(4), Padding = new Thickness(5, 1, 5, 1), Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
+            var statusText = new TextBlock { FontSize = 8, FontWeight = FontWeights.SemiBold };
             statusBadge.Child = statusText;
             Grid.SetColumn(statusBadge, 1);
             topRow.Children.Add(statusBadge);
 
             var controls = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-            var btnPause = MkBtn("\u23F8", tm, true);
+            var btnPause = MkBtn("\u2502\u2502", accent, true); // ││ 2 thin short bars (discreet pause)
             btnPause.Tag = info.JobName;
             btnPause.ToolTip = "Pause";
             btnPause.Click += (s, e) =>
@@ -372,7 +374,7 @@ namespace EasySave.WPF.Views
             };
             controls.Children.Add(btnPause);
 
-            var btnStop = MkBtn("\u23F9", TC("StatusDanger", "#9B4D4D"), true);
+            var btnStop = MkBtn("\u25A0", accent, true); // ■ full square, same style as resume
             btnStop.Tag = info.JobName;
             btnStop.ToolTip = "Stop";
             btnStop.Click += (s, e) =>
@@ -386,20 +388,17 @@ namespace EasySave.WPF.Views
             topRow.Children.Add(controls);
             stack.Children.Add(topRow);
 
-            // Row 2: Progress bar + percentage
-            var progressRow = new Grid { Margin = new Thickness(0, 8, 0, 0) };
+            // Row 2: Progress bar + percentage (AccentPrimary = same as main buttons)
+            var progressRow = new Grid { Margin = new Thickness(0, 2, 0, 0) };
             progressRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             progressRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-            // V3 - Use a Grid with two columns (fill + remaining) instead of absolute Width
-            // This avoids the ActualWidth == 0 timing issue during sequential execution
-            var progressTrack = new Border { Background = B(TC("BorderLight", "#DBBFA0")), CornerRadius = new CornerRadius(3), Height = 5, ClipToBounds = true };
-            var progressInnerGrid = new Grid();
-            progressInnerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(0, GridUnitType.Star) }); // fill column
-            progressInnerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }); // remaining column
+            var progressTrack = new Border { Background = B(TC("BorderLight", "#DBBFA0")), CornerRadius = new CornerRadius(2), Height = 3 };
             var progressFill = new Border
             {
-                CornerRadius = new CornerRadius(3),
+                CornerRadius = new CornerRadius(2),
+                HorizontalAlignment = HorizontalAlignment.Left,
+                Width = 0,
                 Background = new LinearGradientBrush(Cl(accent), Cl(TC("AccentLight", "#C99B6D")), 0)
             };
             Grid.SetColumn(progressFill, 0);
@@ -408,21 +407,21 @@ namespace EasySave.WPF.Views
             Grid.SetColumn(progressTrack, 0);
             progressRow.Children.Add(progressTrack);
 
-            var pctText = new TextBlock { Text = "0%", Foreground = B(accent), FontSize = 13, FontWeight = FontWeights.Bold, Margin = new Thickness(12, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+            var pctText = new TextBlock { Text = "0%", Foreground = B(accent), FontSize = 10, FontWeight = FontWeights.Bold, Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
             Grid.SetColumn(pctText, 1);
             progressRow.Children.Add(pctText);
             stack.Children.Add(progressRow);
 
             // Row 3: File name + count
-            var fileRow = new Grid { Margin = new Thickness(0, 5, 0, 0) };
+            var fileRow = new Grid { Margin = new Thickness(0, 2, 0, 0) };
             fileRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             fileRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-            var fileText = new TextBlock { Foreground = B(tm), FontSize = 10.5, TextTrimming = TextTrimming.CharacterEllipsis };
+            var fileText = new TextBlock { Foreground = B(tm), FontSize = 9, TextTrimming = TextTrimming.CharacterEllipsis };
             Grid.SetColumn(fileText, 0);
             fileRow.Children.Add(fileText);
 
-            var filesCountText = new TextBlock { Foreground = B(ts), FontSize = 11, VerticalAlignment = VerticalAlignment.Center };
+            var filesCountText = new TextBlock { Foreground = B(ts), FontSize = 9, VerticalAlignment = VerticalAlignment.Center };
             Grid.SetColumn(filesCountText, 1);
             fileRow.Children.Add(filesCountText);
             stack.Children.Add(fileRow);
@@ -479,7 +478,7 @@ namespace EasySave.WPF.Views
                 if (topRow.Children.Count >= 3 && topRow.Children[2] is StackPanel controls && controls.Children.Count > 0)
                 {
                     if (controls.Children[0] is Button btnPause)
-                    { btnPause.Content = info.IsPaused ? "\u25B6" : "\u23F8"; btnPause.ToolTip = info.IsPaused ? "Resume" : "Pause"; }
+                    { btnPause.Content = info.IsPaused ? "\u25B6" : "\u2502\u2502"; btnPause.ToolTip = info.IsPaused ? "Resume" : "Pause"; }
                 }
             }
 
@@ -525,17 +524,17 @@ namespace EasySave.WPF.Views
 
         private UIElement CreateJobCard(BackupJob job)
         {
-            var (accent, bgCard, bgHover, tp, ts, tm) = (TC("AccentPrimary", "#a67847"), TC("BgCard", "#F2E0CE"), TC("BgInput", "#EBCFB8"),
-                TC("TextPrimary", "#553f2a"), TC("TextSecondary", "#7A6147"), TC("TextMuted", "#9C8468"));
+            var (accent, bgCard, bgHover, bgRunning, tp, ts, tm) = (TC("AccentPrimary", "#a67847"), TC("BgCard", "#F2E0CE"), TC("BgInput", "#EBCFB8"),
+                "#DCC4A8", TC("TextPrimary", "#553f2a"), TC("TextSecondary", "#7A6147"), TC("TextMuted", "#9C8468")); // bgRunning = marron foncé #a67847
             bool isFull = job.Type == BackupType.Full;
             string typeText = isFull ? _lang.GetText("type_full") : _lang.GetText("type_differential");
             Color bc = isFull ? Cl(accent) : Cl(TC("StatusSuccess", "#5A7247"));
             var card = new Border
             {
-                Background = B(bgCard),
-                CornerRadius = new CornerRadius(14),
-                Padding = new Thickness(20, 16, 20, 16),
-                Margin = new Thickness(0, 0, 0, 12),
+                Background = B(_viewModel.IsJobRunning(job.Name) ? bgRunning : bgCard),
+                CornerRadius = new CornerRadius(10),
+                Padding = new Thickness(10, 6, 10, 6),
+                Margin = new Thickness(0, 0, 0, 5),
                 Cursor = Cursors.Hand,
                 Effect = new DropShadowEffect { BlurRadius = 12, ShadowDepth = 2, Opacity = 0.06, Color = Cl(tp) }
             };
@@ -546,16 +545,16 @@ namespace EasySave.WPF.Views
             top.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             top.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             top.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            var name = new TextBlock { Text = job.Name, FontSize = 14, FontWeight = FontWeights.SemiBold, Foreground = B(tp), VerticalAlignment = VerticalAlignment.Center };
+            var name = new TextBlock { Text = job.Name, FontSize = 12, FontWeight = FontWeights.SemiBold, Foreground = B(tp), VerticalAlignment = VerticalAlignment.Center };
             Grid.SetColumn(name, 0); top.Children.Add(name);
             var badge = new Border
             {
                 Background = new SolidColorBrush(Color.FromArgb(0x20, bc.R, bc.G, bc.B)),
-                CornerRadius = new CornerRadius(6),
-                Padding = new Thickness(10, 4, 10, 4),
-                Margin = new Thickness(0, 0, 12, 0),
+                CornerRadius = new CornerRadius(4),
+                Padding = new Thickness(6, 2, 6, 2),
+                Margin = new Thickness(0, 0, 8, 0),
                 VerticalAlignment = VerticalAlignment.Center,
-                Child = new TextBlock { Text = typeText, FontSize = 11, FontWeight = FontWeights.SemiBold, Foreground = new SolidColorBrush(bc) }
+                Child = new TextBlock { Text = typeText, FontSize = 9, FontWeight = FontWeights.SemiBold, Foreground = new SolidColorBrush(bc) }
             };
             Grid.SetColumn(badge, 1); top.Children.Add(badge);
             var acts = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
@@ -576,7 +575,8 @@ namespace EasySave.WPF.Views
             var dl = MkBtn("\u2715", TC("StatusDanger", "#9B4D4D"), true); dl.Click += (s, e) => { e.Handled = true; DeleteJob(job); }; acts.Children.Add(dl);
             Grid.SetColumn(acts, 2); top.Children.Add(acts);
             Grid.SetRow(top, 0); cg.Children.Add(top);
-            var info = new Grid { Margin = new Thickness(0, 10, 0, 0) };
+            card.Tag = job.Name;
+            var info = new Grid { Margin = new Thickness(0, 4, 0, 0) };
             info.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(55) });
             info.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             info.RowDefinitions.Add(new RowDefinition()); info.RowDefinitions.Add(new RowDefinition());
@@ -584,14 +584,32 @@ namespace EasySave.WPF.Views
             AddCell(info, 1, 0, "Target", tm); AddCell(info, 1, 1, job.TargetDirectory, ts, true);
             Grid.SetRow(info, 1); cg.Children.Add(info);
             card.Child = cg;
-            card.MouseEnter += (s, e) => card.Background = B(bgHover);
-            card.MouseLeave += (s, e) => card.Background = B(bgCard);
+            card.MouseEnter += (s, e) =>
+            {
+                if (!_viewModel.IsJobRunning(job.Name)) card.Background = B(bgHover);
+            };
+            card.MouseLeave += (s, e) =>
+            {
+                card.Background = B(_viewModel.IsJobRunning(job.Name) ? bgRunning : bgCard);
+            };
             return card;
+        }
+
+        private void UpdateJobCardsRunningState()
+        {
+            var (bgCard, bgRunning) = (TC("BgCard", "#F2E0CE"), "#DCC4A8"); // marron foncé #a67847 for running jobs
+            foreach (var child in JobListPanel.Children)
+            {
+                if (child is Border card && card.Tag is string jobName)
+                {
+                    card.Background = B(_viewModel.IsJobRunning(jobName) ? bgRunning : bgCard);
+                }
+            }
         }
 
         private void AddCell(Grid g, int r, int c, string txt, string col, bool trim = false)
         {
-            var tb = new TextBlock { Text = txt, FontSize = 11, Foreground = B(col), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 1, 0, 1) };
+            var tb = new TextBlock { Text = txt, FontSize = 10, Foreground = B(col), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 0, 0) };
             if (trim) tb.TextTrimming = TextTrimming.CharacterEllipsis;
             Grid.SetRow(tb, r); Grid.SetColumn(tb, c); g.Children.Add(tb);
         }
@@ -685,6 +703,14 @@ namespace EasySave.WPF.Views
                 _viewModel.EncryptionExtensionsText = TxtEncryptionExtensions.Text.Trim();
             }
         }
+        private void TxtLargeFileThreshold_LostFocus(object s, RoutedEventArgs e)
+        {
+            if (_viewModel != null && int.TryParse(TxtLargeFileThreshold.Text.Trim(), out int val))
+            {
+                _viewModel.LargeFileThresholdKo = Math.Max(0, val);
+                TxtLargeFileThreshold.Text = _viewModel.LargeFileThresholdKo.ToString();
+            }
+        }
 
         // ===== TRANSLATIONS =====
         private void ApplyTranslations()
@@ -704,7 +730,9 @@ namespace EasySave.WPF.Views
             BtnTabLanguage.Content = _lang.GetText("settings_tab_language"); BtnTabTheme.Content = _lang.GetText("settings_tab_theme");
             LblSettingsBusiness.Text = _lang.GetText("settings_business_software"); LblSettingsBusinessDesc.Text = _lang.GetText("settings_business_desc");
             LblSettingsEncryption.Text = _lang.GetText("settings_encryption"); LblSettingsEncKey.Text = _lang.GetText("settings_encryption_key");
-            LblSettingsEncExt.Text = _lang.GetText("settings_encryption_ext"); LblSettingsLogFormat.Text = _lang.GetText("settings_log_format");
+            LblSettingsEncExt.Text = _lang.GetText("settings_encryption_ext");
+            LblSettingsLargeFile.Text = _lang.GetText("settings_large_file"); LblSettingsLargeFileDesc.Text = _lang.GetText("settings_large_file_desc");
+            LblSettingsLogFormat.Text = _lang.GetText("settings_log_format");
             LblSettingsLogDesc.Text = _lang.GetText("settings_log_desc"); LblSettingsLangTitle.Text = _lang.GetText("settings_language_title");
             LblSettingsLangDesc.Text = _lang.GetText("settings_language_desc"); LblSettingsThemeTitle.Text = _lang.GetText("settings_theme_title");
             LblSettingsThemeDesc.Text = _lang.GetText("settings_theme_desc");

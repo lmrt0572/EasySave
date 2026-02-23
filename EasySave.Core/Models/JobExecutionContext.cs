@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Threading;
 
 namespace EasySave.Core.Models
@@ -26,6 +26,8 @@ namespace EasySave.Core.Models
         public bool IsPaused => !_pauseGate.IsSet;
 
         public CancellationToken Token => _cts.Token;
+
+        public int LargeFileThresholdKo { get; set; }
 
         // ===== CONSTRUCTOR =====
         public JobExecutionContext(string jobName)
