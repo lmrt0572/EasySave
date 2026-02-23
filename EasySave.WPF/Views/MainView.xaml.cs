@@ -92,6 +92,15 @@ namespace EasySave.WPF.Views
             UpdateLogFormatButtons(); UpdateLanguageButtons(); UpdateThemeSelection();
             ApplyTranslations(); RefreshJobList(); UpdateWarning(); UpdateDashboard();
             BtnExecuteAll.IsEnabled = _viewModel.CanExecute;
+
+            foreach (ComboBoxItem item in CmbLogMode.Items)
+            {
+                if (item.Tag?.ToString() == _viewModel.LogMode)
+                {
+                    CmbLogMode.SelectedItem = item;
+                    break;
+                }
+            }
         }
 
         // ===== FOLDER BROWSER =====
@@ -707,6 +716,14 @@ namespace EasySave.WPF.Views
             {
                 _viewModel.LargeFileThresholdKo = Math.Max(0, val);
                 TxtLargeFileThreshold.Text = _viewModel.LargeFileThresholdKo.ToString();
+            }
+        }
+
+        private void CmbLogMode_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_viewModel != null && CmbLogMode.SelectedItem is ComboBoxItem item)
+            {
+                _viewModel.LogMode = item.Tag.ToString()!;
             }
         }
 

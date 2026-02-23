@@ -123,6 +123,36 @@ namespace EasySave.Core.ViewModels
             }
         }
 
+        // ===== LOG MODE =====
+        public string LogMode
+        {
+            get => _config.LogMode.ToString();
+            set
+            {
+                if (Enum.TryParse<LogMode>(value, out var mode))
+                {
+                    if (_config.LogMode == mode) return;
+                    _config.LogMode = mode;
+                    LogService.Instance.SetLogMode(mode);
+                    SaveConfig();
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public string DockerUrl
+        {
+            get => _config.DockerUrl;
+            set
+            {
+                if (_config.DockerUrl == value) return;
+                _config.DockerUrl = value;
+                LogService.Instance.UpdateDockerUrl(value);
+                SaveConfig();
+                OnPropertyChanged();
+            }
+        }
+
         // ===== PROGRESS (kept for compat) =====
         public string CurrentJobName { get => _currentJobName; private set { _currentJobName = value; OnPropertyChanged(); } }
         public int ProgressPercent { get => _progressPercent; private set { _progressPercent = value; OnPropertyChanged(); } }
@@ -532,7 +562,12 @@ namespace EasySave.Core.ViewModels
             ApplyLogFormat();
         }
 
-        private void ApplyLogFormat() => LogService.Instance.SetLogFormat(_config.LogFormat);
+        private void ApplyLogFormat()
+        {
+            LogService.Instance.SetLogFormat(_config.LogFormat);
+            LogService.Instance.SetLogMode(_config.LogMode);
+            LogService.Instance.UpdateDockerUrl(_config.DockerUrl);
+        }
 
         private static EasyLog.Models.LogFormat ParseLogFormat(string? value)
         {

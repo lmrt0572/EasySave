@@ -28,7 +28,7 @@ namespace EasyLog.Services
 
         private LogMode _currentMode = LogMode.Both;
         private static readonly HttpClient _httpClient = new HttpClient();
-        private string DockerUrl = "http://localhost:8080/api/logs";
+        private string _dockerUrl = string.Empty;
 
         // ===== CONSTRUCTOR =====
         private LogService()
@@ -61,6 +61,11 @@ namespace EasyLog.Services
 
         // ===== LOG MODE SETTER =====
         public void SetLogMode(LogMode mode) => _currentMode = mode;
+
+        public void UpdateDockerUrl(string newUrl)
+        {
+            this._dockerUrl = newUrl;
+        }
 
         // ===== MIGRATION =====
 
@@ -285,7 +290,7 @@ namespace EasyLog.Services
             try
             {
                 string machineName = Environment.MachineName;
-                string url = $"{DockerUrl}?machine={Uri.EscapeDataString(machineName)}";
+                string url = $"{_dockerUrl}?machine={Uri.EscapeDataString(machineName)}";
 
                 var response = await _httpClient.PostAsJsonAsync(url, entry);
                 response.EnsureSuccessStatusCode();
