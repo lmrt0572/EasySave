@@ -395,14 +395,19 @@ namespace EasySave.WPF.Views
             progressRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
             var progressTrack = new Border { Background = B(TC("BorderLight", "#DBBFA0")), CornerRadius = new CornerRadius(2), Height = 3 };
+            var innerGrid = new Grid();
+            innerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(0, GridUnitType.Star) });
+            innerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(100, GridUnitType.Star) });
             var progressFill = new Border
             {
                 CornerRadius = new CornerRadius(2),
-                HorizontalAlignment = HorizontalAlignment.Left,
-                Width = 0,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                VerticalAlignment = VerticalAlignment.Stretch,
                 Background = new LinearGradientBrush(Cl(accent), Cl(TC("AccentLight", "#C99B6D")), 0)
             };
-            progressTrack.Child = progressFill;
+            Grid.SetColumn(progressFill, 0);
+            innerGrid.Children.Add(progressFill);
+            progressTrack.Child = innerGrid;
             Grid.SetColumn(progressTrack, 0);
             progressRow.Children.Add(progressTrack);
 
