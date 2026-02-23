@@ -34,6 +34,10 @@ namespace EasySave.Core.ViewModels
         private bool _isBusinessSoftwareDetected;
         private bool _isExecuting;
         private string _statusMessage = string.Empty;
+        private string _currentJobName = string.Empty;
+        private int _progressPercent;
+        private string _progressText = string.Empty;
+        private string _currentFileName = string.Empty;
 
 
         // ===== NOTIFICATION STATE =====

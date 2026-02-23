@@ -401,9 +401,7 @@ namespace EasySave.WPF.Views
                 Width = 0,
                 Background = new LinearGradientBrush(Cl(accent), Cl(TC("AccentLight", "#C99B6D")), 0)
             };
-            Grid.SetColumn(progressFill, 0);
-            progressInnerGrid.Children.Add(progressFill);
-            progressTrack.Child = progressInnerGrid;
+            progressTrack.Child = progressFill;
             Grid.SetColumn(progressTrack, 0);
             progressRow.Children.Add(progressTrack);
 
@@ -597,7 +595,7 @@ namespace EasySave.WPF.Views
 
         private void UpdateJobCardsRunningState()
         {
-            var (bgCard, bgRunning) = (TC("BgCard", "#F2E0CE"), "#DCC4A8"); // marron foncé #a67847 for running jobs
+            var (bgCard, bgRunning) = (TC("BgCard", "#F2E0CE"), "#DCC4A8");
             foreach (var child in JobListPanel.Children)
             {
                 if (child is Border card && card.Tag is string jobName)
