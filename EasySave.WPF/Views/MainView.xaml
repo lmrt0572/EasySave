@@ -233,6 +233,9 @@
                             <TextBlock x:Name="LblSettingsLargeFile" Text="Large File Threshold (Ko)" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}" Margin="0,20,0,6"/>
                             <TextBlock x:Name="LblSettingsLargeFileDesc" Text="Only one file above this size transfers at a time (0 = disabled)" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
                             <TextBox x:Name="TxtLargeFileThreshold" Style="{StaticResource CardInputStyle}" Text="1000" LostFocus="TxtLargeFileThreshold_LostFocus"/>
+                            <TextBlock x:Name="LblSettingsPriorityExt" Text="Priority extensions (V3)" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}" Margin="0,20,0,6"/>
+                            <TextBlock x:Name="LblSettingsPriorityExtDesc" Text="Comma-separated; these files are saved before others across all jobs (empty = no priority)" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
+                            <TextBox x:Name="TxtPriorityExtensions" Style="{StaticResource CardInputStyle}" LostFocus="TxtPriorityExtensions_LostFocus"/>
                         </StackPanel>
                         <!-- LOGS -->
                         <StackPanel x:Name="TabLogsContent" Visibility="Collapsed" MaxWidth="500" HorizontalAlignment="Left">

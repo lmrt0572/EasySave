@@ -2,85 +2,150 @@ using EasySave.Core.Models;
 using EasySave.Core.Utils;
 using EasySave.Core.Services;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+    // ===== DIFFERENTIAL BACKUP STRATEGY =====
 
 namespace EasySave.Core.Strategies
+        // ===== EXECUTION (Console compatibility) =====
 {
-    // ===== DIFFERENTIAL BACKUP STRATEGY =====
     public class DifferentialBackupStrategy : IBackupStrategy
     {
-        // ===== EXECUTION (Console compatibility) =====
+        // ===== EXECUTION (with pause/stop support + large file coordination) =====
         public async Task Execute(BackupJob job, IEncryptionService encryptionService, Action<string, string, long, long, int> onFileCompleted)
         {
+            {
             await Execute(job, encryptionService, onFileCompleted, context: null!);
         }
-
-        // ===== EXECUTION (with pause/stop support + large file coordination) =====
-        public async Task Execute(BackupJob job, IEncryptionService encryptionService, Action<string, string, long, long, int> onFileCompleted, JobExecutionContext context)
-        {
-            if (!FileUtils.DirectoryExists(job.SourceDirectory))
-            {
-                throw new DirectoryNotFoundException($"Source directory not found: {job.SourceDirectory}");
             }
 
-            var files = FileUtils.GetAllFilesRecursive(job.SourceDirectory);
-            int thresholdKo = context?.LargeFileThresholdKo ?? 0;
+        public async Task Execute(BackupJob job, IEncryptionService encryptionService, Action<string, string, long, long, int> onFileCompleted, JobExecutionContext context)
+        {
+            // ===== SOURCE DIRECTORY CHECK =====
+            if (!FileUtils.DirectoryExists(job.SourceDirectory))
+                throw new DirectoryNotFoundException($"Source directory not found: {job.SourceDirectory}");
 
-            foreach (var sourceFile in files)
+            var allFiles = FileUtils.GetAllFilesRecursive(job.SourceDirectory).ToList();
+            var filesToCopy = new List<string>();
+            foreach (var sourceFile in allFiles)
             {
-                // ===== BUSINESS SOFTWARE / PAUSE / STOP =====
-                context?.ThrowIfStoppedOrWaitIfPaused();
-
-                // ===== PRIORITY FILES ===== (placeholder - to be implemented)
-
                 var relativePath = Path.GetRelativePath(job.SourceDirectory, sourceFile);
                 var targetFile = Path.Combine(job.TargetDirectory, relativePath);
-
                 if (File.Exists(targetFile) && File.GetLastWriteTime(sourceFile) <= File.GetLastWriteTime(targetFile))
-                {
                     continue;
-                }
+                filesToCopy.Add(sourceFile);
+            }
 
-                long fileSize = FileUtils.GetFileSize(sourceFile);
+            int thresholdKo = context?.LargeFileThresholdKo ?? 0;
+            var priorityExtensions = context?.PriorityExtensions;
+            bool usePriorityRule = context != null && priorityExtensions != null && priorityExtensions.Count > 0;
 
-                // ===== LARGE FILES =====
-                await LargeFileTransferCoordinator.Instance.AcquireSlotIfLargeAsync(fileSize, thresholdKo, context?.Token ?? CancellationToken.None);
-
-                var stopwatch = Stopwatch.StartNew();
-                int cryptTime = 0;
-
-                try
+            if (!usePriorityRule)
+            {
+                foreach (var sourceFile in filesToCopy)
                 {
-                    if (context != null)
-                        await FileUtils.CopyFileAsync(sourceFile, targetFile, context.Token);
+                    // ===== PAUSE / STOP (wait if paused; throw if stopped) =====
+                    context?.ThrowIfStoppedOrWaitIfPaused();
+                    await ProcessOneFileAsync(job, sourceFile, thresholdKo, encryptionService, onFileCompleted, context);
+                }
+                return;
+            }
+
+            // ===== PRIORITY RULE: one loop — priority files processed now, others deferred =====
+            PriorityFileCoordinator.Instance.RegisterJob(context!.JobName);
+            var deferredFiles = new List<string>();
+            try
+            {
+                foreach (var sourceFile in filesToCopy)
+                {
+                    // ===== PAUSE / STOP (wait if paused; throw if stopped) =====
+                    context.ThrowIfStoppedOrWaitIfPaused();
+
+                    // ===== PRIORITY FILE ? Yes → process now ; No → leave for later =====
+                    if (IsPriorityFile(sourceFile, priorityExtensions))
+                        await ProcessOneFileAsync(job, sourceFile, thresholdKo, encryptionService, onFileCompleted, context);
                     else
-                        FileUtils.CopyFile(sourceFile, targetFile);
-                    stopwatch.Stop();
+                        deferredFiles.Add(sourceFile);
+                }
 
-                    if (encryptionService.IsExtensionTargeted(targetFile))
-                    {
-                        cryptTime = await encryptionService.EncryptAsync(targetFile);
-                    }
+                // ===== BARRIER: no non-priority transfer until all jobs have finished their priority phase =====
+                PriorityFileCoordinator.Instance.NotifyPriorityPhaseDone(context.JobName);
+                await PriorityFileCoordinator.Instance.WaitUntilCanTransferNonPriorityAsync(context.Token);
 
-                    onFileCompleted(sourceFile, targetFile, fileSize, stopwatch.ElapsedMilliseconds, cryptTime);
-                }
-                catch (OperationCanceledException)
+                foreach (var sourceFile in deferredFiles)
                 {
-                    throw;
+                    // ===== PAUSE / STOP (wait if paused; throw if stopped) =====
+                    context.ThrowIfStoppedOrWaitIfPaused();
+                    await ProcessOneFileAsync(job, sourceFile, thresholdKo, encryptionService, onFileCompleted, context);
                 }
-                catch (Exception)
-                {
-                    if (stopwatch.IsRunning) stopwatch.Stop();
-                    onFileCompleted(sourceFile, targetFile, 0, -1, -1);
-                    throw;
-                }
-                finally
-                {
-                    LargeFileTransferCoordinator.Instance.ReleaseSlotIfLarge(fileSize, thresholdKo);
-                }
+            }
+            finally
+            {
+                PriorityFileCoordinator.Instance.UnregisterJob(context.JobName);
+            }
+        }
+
+        private static bool IsPriorityFile(string filePath, IReadOnlyList<string> extensions)
+        {
+            if (extensions == null || extensions.Count == 0) return false;
+            var ext = Path.GetExtension(filePath).ToLowerInvariant();
+            if (string.IsNullOrEmpty(ext)) return false;
+            foreach (var e in extensions)
+            {
+                var n = (e ?? "").Trim().ToLowerInvariant();
+                if (string.IsNullOrEmpty(n)) continue;
+                if (!n.StartsWith(".")) n = "." + n;
+                if (ext == n) return true;
+            }
+            return false;
+        }
+
+        private static async Task ProcessOneFileAsync(BackupJob job, string sourceFile, int thresholdKo,
+            IEncryptionService encryptionService, Action<string, string, long, long, int> onFileCompleted,
+            JobExecutionContext? context)
+        {
+            var relativePath = Path.GetRelativePath(job.SourceDirectory, sourceFile);
+            var targetFile = Path.Combine(job.TargetDirectory, relativePath);
+            long fileSize = FileUtils.GetFileSize(sourceFile);
+
+            // ===== LARGE FILE ? Wait for slot if size > n Ko (parallel transfer restriction) =====
+            await LargeFileTransferCoordinator.Instance.AcquireSlotIfLargeAsync(fileSize, thresholdKo, context?.Token ?? CancellationToken.None);
+
+            var stopwatch = Stopwatch.StartNew();
+            int cryptTime = 0;
+            try
+            {
+                // ===== COPY FILE =====
+                if (context != null)
+                    await FileUtils.CopyFileAsync(sourceFile, targetFile, context.Token);
+                else
+                    FileUtils.CopyFile(sourceFile, targetFile);
+
+                stopwatch.Stop();
+                // ===== ENCRYPT IF EXTENSION TARGETED (CryptoSoft) =====
+                if (encryptionService.IsExtensionTargeted(targetFile))
+                    cryptTime = await encryptionService.EncryptAsync(targetFile);
+                // ===== NOTIFY COMPLETION (state + log) =====
+                onFileCompleted(sourceFile, targetFile, fileSize, stopwatch.ElapsedMilliseconds, cryptTime);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception)
+            {
+                if (stopwatch.IsRunning) stopwatch.Stop();
+                onFileCompleted(sourceFile, targetFile, 0, -1, -1);
+                throw;
+            }
+            finally
+            {
+                // ===== RELEASE LARGE FILE SLOT IF USED =====
+                LargeFileTransferCoordinator.Instance.ReleaseSlotIfLarge(fileSize, thresholdKo);
             }
         }
     }

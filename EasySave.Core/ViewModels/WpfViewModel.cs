@@ -99,14 +99,27 @@ namespace EasySave.Core.ViewModels
             }
         }
 
+        // ===== LARGE FILE THRESHOLD (V3) =====
         // ===== ENCRYPTION STATUS (for Dashboard) =====
         public bool IsEncryptionActive => !string.IsNullOrWhiteSpace(_config.EncryptionKey) && _config.EncryptionExtensions.Count > 0;
 
-        // ===== LARGE FILE THRESHOLD (V3) =====
         public int LargeFileThresholdKo
         {
             get => _config.LargeFileThresholdKo;
             set { _config.LargeFileThresholdKo = Math.Max(0, value); SaveConfig(); OnPropertyChanged(); }
+        }
+
+        public string PriorityExtensionsText
+        {
+            get => string.Join(", ", _config.PriorityExtensions);
+            set
+            {
+                _config.PriorityExtensions = value.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(e => e.Trim().ToLowerInvariant()).Where(e => !string.IsNullOrEmpty(e))
+                    .Select(e => e.StartsWith('.') ? e : "." + e).Distinct().ToList();
+                SaveConfig();
+                OnPropertyChanged();
+            }
         }
 
         // ===== LOG FORMAT =====
@@ -244,7 +257,11 @@ namespace EasySave.Core.ViewModels
 
             IsExecuting = true;
 
-            var context = new JobExecutionContext(job.Name) { LargeFileThresholdKo = _config.LargeFileThresholdKo };
+            var context = new JobExecutionContext(job.Name)
+            {
+                LargeFileThresholdKo = _config.LargeFileThresholdKo,
+                PriorityExtensions = _config.PriorityExtensions
+            };
             _runningJobs[job.Name] = context;
 
             // Add progress info for this job
@@ -296,7 +313,11 @@ namespace EasySave.Core.ViewModels
             // ===== PARALLEL EXECUTION =====
             foreach (var job in jobsList)
             {
-                var context = new JobExecutionContext(job.Name) { LargeFileThresholdKo = _config.LargeFileThresholdKo };
+                var context = new JobExecutionContext(job.Name)
+                {
+                    LargeFileThresholdKo = _config.LargeFileThresholdKo,
+                    PriorityExtensions = _config.PriorityExtensions
+                };
                 _runningJobs[job.Name] = context;
 
                 var progressInfo = new JobProgressInfo(job.Name);

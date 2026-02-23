@@ -14,6 +14,7 @@ namespace EasySave.Core.Models
         public LogMode LogMode { get; set; } = LogMode.Local;
         public string DockerUrl { get; set; } = "http://localhost:8080/api/logs";
         public int LargeFileThresholdKo { get; set; } = 1000;
+        public List<string> PriorityExtensions { get; set; } = new();
         public List<BackupJob> Jobs { get; set; } = new();
     }
 }

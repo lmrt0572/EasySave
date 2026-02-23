@@ -86,6 +86,7 @@ namespace EasySave.WPF.Views
             BtnToggleKeyVisibility.Content = "\U0001F512";
             TxtEncryptionExtensions.Text = _viewModel.EncryptionExtensionsText;
             TxtLargeFileThreshold.Text = _viewModel.LargeFileThresholdKo.ToString();
+            TxtPriorityExtensions.Text = _viewModel.PriorityExtensionsText;
 
             BuildThemeSwatches(); BuildDashboardCards();
             SetActiveNav("Jobs"); SetActiveSettingsTab(0);
@@ -403,14 +404,19 @@ namespace EasySave.WPF.Views
             progressRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
             var progressTrack = new Border { Background = B(TC("BorderLight", "#DBBFA0")), CornerRadius = new CornerRadius(2), Height = 3 };
+            var innerGrid = new Grid();
+            innerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(0, GridUnitType.Star) });
+            innerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(100, GridUnitType.Star) });
             var progressFill = new Border
             {
                 CornerRadius = new CornerRadius(2),
-                HorizontalAlignment = HorizontalAlignment.Left,
-                Width = 0,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                VerticalAlignment = VerticalAlignment.Stretch,
                 Background = new LinearGradientBrush(Cl(accent), Cl(TC("AccentLight", "#C99B6D")), 0)
             };
-            progressTrack.Child = progressFill;
+            Grid.SetColumn(progressFill, 0);
+            innerGrid.Children.Add(progressFill);
+            progressTrack.Child = innerGrid;
             Grid.SetColumn(progressTrack, 0);
             progressRow.Children.Add(progressTrack);
 
@@ -719,6 +725,12 @@ namespace EasySave.WPF.Views
             }
         }
 
+        private void TxtPriorityExtensions_LostFocus(object s, RoutedEventArgs e)
+        {
+            if (_viewModel != null)
+            {
+                _viewModel.PriorityExtensionsText = TxtPriorityExtensions.Text.Trim();
+                TxtPriorityExtensions.Text = _viewModel.PriorityExtensionsText;
         private void CmbLogMode_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (_viewModel != null && CmbLogMode.SelectedItem is ComboBoxItem item)
@@ -747,6 +759,7 @@ namespace EasySave.WPF.Views
             LblSettingsEncryption.Text = _lang.GetText("settings_encryption"); LblSettingsEncKey.Text = _lang.GetText("settings_encryption_key");
             LblSettingsEncExt.Text = _lang.GetText("settings_encryption_ext");
             LblSettingsLargeFile.Text = _lang.GetText("settings_large_file"); LblSettingsLargeFileDesc.Text = _lang.GetText("settings_large_file_desc");
+            LblSettingsPriorityExt.Text = _lang.GetText("settings_priority_ext"); LblSettingsPriorityExtDesc.Text = _lang.GetText("settings_priority_ext_desc");
             LblSettingsLogFormat.Text = _lang.GetText("settings_log_format");
             LblSettingsLogDesc.Text = _lang.GetText("settings_log_desc"); LblSettingsLangTitle.Text = _lang.GetText("settings_language_title");
             LblSettingsLangDesc.Text = _lang.GetText("settings_language_desc"); LblSettingsThemeTitle.Text = _lang.GetText("settings_theme_title");
