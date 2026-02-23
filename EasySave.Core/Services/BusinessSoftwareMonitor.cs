@@ -81,7 +81,7 @@ namespace EasySave.Core.Services
 
                 UpdateState(detected);
             }
-            catch {}
+            catch {
 
             }
         }
