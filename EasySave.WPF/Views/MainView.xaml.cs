@@ -751,6 +751,21 @@ namespace EasySave.WPF.Views
             LblSettingsLogDesc.Text = _lang.GetText("settings_log_desc"); LblSettingsLangTitle.Text = _lang.GetText("settings_language_title");
             LblSettingsLangDesc.Text = _lang.GetText("settings_language_desc"); LblSettingsThemeTitle.Text = _lang.GetText("settings_theme_title");
             LblSettingsThemeDesc.Text = _lang.GetText("settings_theme_desc");
+            LblSettingsLogMode.Text = _lang.GetText("settings_log_mode_title");
+            LblSettingsLogModeDesc.Text = _lang.GetText("settings_log_mode_desc");
+
+            if (CmbType != null && CmbType.Items.Count >= 2)
+            {
+                ((ComboBoxItem)CmbType.Items[0]).Content = _lang.GetText("type_full");
+                ((ComboBoxItem)CmbType.Items[1]).Content = _lang.GetText("type_differential");
+            }
+
+            if (CmbLogMode != null && CmbLogMode.Items.Count >= 3)
+            {
+                ((ComboBoxItem)CmbLogMode.Items[0]).Content = _lang.GetText("log_mode_local");
+                ((ComboBoxItem)CmbLogMode.Items[1]).Content = _lang.GetText("log_mode_centralized");
+                ((ComboBoxItem)CmbLogMode.Items[2]).Content = _lang.GetText("log_mode_both");
+            }
             UpdateWarning(); UpdateDashboard();
         }
 
