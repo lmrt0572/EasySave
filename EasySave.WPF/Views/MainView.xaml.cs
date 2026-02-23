@@ -93,6 +93,15 @@ namespace EasySave.WPF.Views
             UpdateLogFormatButtons(); UpdateLanguageButtons(); UpdateThemeSelection();
             ApplyTranslations(); RefreshJobList(); UpdateWarning(); UpdateDashboard();
             BtnExecuteAll.IsEnabled = _viewModel.CanExecute;
+
+            foreach (ComboBoxItem item in CmbLogMode.Items)
+            {
+                if (item.Tag?.ToString() == _viewModel.LogMode)
+                {
+                    CmbLogMode.SelectedItem = item;
+                    break;
+                }
+            }
         }
 
         // ===== FOLDER BROWSER =====
@@ -722,6 +731,11 @@ namespace EasySave.WPF.Views
             {
                 _viewModel.PriorityExtensionsText = TxtPriorityExtensions.Text.Trim();
                 TxtPriorityExtensions.Text = _viewModel.PriorityExtensionsText;
+        private void CmbLogMode_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_viewModel != null && CmbLogMode.SelectedItem is ComboBoxItem item)
+            {
+                _viewModel.LogMode = item.Tag.ToString()!;
             }
         }
 
@@ -750,6 +764,21 @@ namespace EasySave.WPF.Views
             LblSettingsLogDesc.Text = _lang.GetText("settings_log_desc"); LblSettingsLangTitle.Text = _lang.GetText("settings_language_title");
             LblSettingsLangDesc.Text = _lang.GetText("settings_language_desc"); LblSettingsThemeTitle.Text = _lang.GetText("settings_theme_title");
             LblSettingsThemeDesc.Text = _lang.GetText("settings_theme_desc");
+            LblSettingsLogMode.Text = _lang.GetText("settings_log_mode_title");
+            LblSettingsLogModeDesc.Text = _lang.GetText("settings_log_mode_desc");
+
+            if (CmbType != null && CmbType.Items.Count >= 2)
+            {
+                ((ComboBoxItem)CmbType.Items[0]).Content = _lang.GetText("type_full");
+                ((ComboBoxItem)CmbType.Items[1]).Content = _lang.GetText("type_differential");
+            }
+
+            if (CmbLogMode != null && CmbLogMode.Items.Count >= 3)
+            {
+                ((ComboBoxItem)CmbLogMode.Items[0]).Content = _lang.GetText("log_mode_local");
+                ((ComboBoxItem)CmbLogMode.Items[1]).Content = _lang.GetText("log_mode_centralized");
+                ((ComboBoxItem)CmbLogMode.Items[2]).Content = _lang.GetText("log_mode_both");
+            }
             UpdateWarning(); UpdateDashboard();
         }
 

@@ -9,7 +9,6 @@ namespace EasySave.Core.Services
     {
         // ===== CONSTANTS =====
         private const int MinIndex = 1;
-        private const int MaxIndex = 5;
 
         // ===== ERROR TRACKING =====
         public bool HasError { get; private set; }
@@ -71,8 +70,7 @@ namespace EasySave.Core.Services
             if (indices.Count == 0 && !HasError)
             {
                 HasError = true;
-
-                ErrorMessage = $"No valid job indices found. Valid range: {MinIndex}-{MaxIndex}";
+                ErrorMessage = $"No valid job indices found. Index must be greater than or equal to {MinIndex}.";
             }
 
             return indices.OrderBy(x => x);
@@ -129,8 +127,7 @@ namespace EasySave.Core.Services
 
             if (invalidCount > 0 && validCount > 0)
             {
-                // Warning: some indices were out of range but we still have valid ones
-                ErrorMessage = $"Warning: Some indices were out of valid range ({MinIndex}-{MaxIndex}).";
+                ErrorMessage = $"Warning: Some indices were below the minimum allowed value ({MinIndex}).";
             }
 
             return indices;
@@ -145,7 +142,7 @@ namespace EasySave.Core.Services
             foreach (var part in parts)
             {
                 var trimmed = part.Trim();
-                
+
                 if (string.IsNullOrWhiteSpace(trimmed))
                     continue;
 
@@ -168,7 +165,7 @@ namespace EasySave.Core.Services
             if (invalidValues.Count > 0)
             {
                 HasError = indices.Count == 0;
-                ErrorMessage = $"Invalid or out-of-range values: {string.Join(", ", invalidValues)}. Valid range: {MinIndex}-{MaxIndex}";
+                ErrorMessage = $"Invalid or out-of-range values: {string.Join(", ", invalidValues)}. Index must be greater than or equal to {MinIndex}.";
             }
 
             return indices;
@@ -188,7 +185,7 @@ namespace EasySave.Core.Services
             if (!IsValidIndex(index))
             {
                 HasError = true;
-                ErrorMessage = $"Index {index} is out of valid range ({MinIndex}-{MaxIndex}).";
+                ErrorMessage = $"Index {index} is below the minimum allowed value ({MinIndex}).";
                 return indices;
             }
 
@@ -197,6 +194,6 @@ namespace EasySave.Core.Services
         }
 
         // ===== VALIDATION =====
-        private bool IsValidIndex(int index) => index >= MinIndex && index <= MaxIndex;
+        private bool IsValidIndex(int index) => index >= MinIndex;
     }
 }

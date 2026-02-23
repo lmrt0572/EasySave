@@ -83,6 +83,8 @@ namespace EasySave.Core.Models.Enums
                 ["job_source"] = new() { [Language.English] = "Source: ", [Language.French] = "Source : " },
                 ["job_target"] = new() { [Language.English] = "Target: ", [Language.French] = "Cible : " },
                 ["job_type"] = new() { [Language.English] = "Type: ", [Language.French] = "Type : " },
+                ["type_full"] = new() { [Language.English] = "Full", [Language.French] = "Complète" },
+                ["type_differential"] = new() { [Language.English] = "Differential", [Language.French] = "Différentielle" },
 
                 // ── Log format (dev) ──
                 ["log_format_changed"] = new() { [Language.English] = "Log format changed to {0}", [Language.French] = "Format de log changé en {0}" },
@@ -157,7 +159,7 @@ namespace EasySave.Core.Models.Enums
 
                 // ===== SETTINGS TABS =====
                 ["settings_tab_general"] = new() { [Language.English] = "General", [Language.French] = "Général" },
-                ["settings_tab_logs"] = new() { [Language.English] = "Logs", [Language.French] = "Journaux" },
+                ["settings_tab_logs"] = new() { [Language.English] = "Logs", [Language.French] = "Logs" },
                 ["settings_tab_language"] = new() { [Language.English] = "Language", [Language.French] = "Langue" },
 
                 // ===== SETTINGS GENERAL =====
@@ -168,8 +170,8 @@ namespace EasySave.Core.Models.Enums
                 ["settings_encryption_ext"] = new() { [Language.English] = "Target Extensions", [Language.French] = "Extensions cibles" },
 
                 // ===== SETTINGS LOGS =====
-                ["settings_log_format"] = new() { [Language.English] = "Log Format", [Language.French] = "Format des journaux" },
-                ["settings_log_desc"] = new() { [Language.English] = "Choose output format for backup logs", [Language.French] = "Choisissez le format de sortie des journaux" },
+                ["settings_log_format"] = new() { [Language.English] = "Log Format", [Language.French] = "Format des Logs" },
+                ["settings_log_desc"] = new() { [Language.English] = "Choose output format for backup logs", [Language.French] = "Choisissez le format de sortie des logs" },
 
                 // ===== SETTINGS LANGUAGE =====
                 ["settings_language_title"] = new() { [Language.English] = "Application Language", [Language.French] = "Langue de l'application" },
@@ -223,6 +225,15 @@ namespace EasySave.Core.Models.Enums
                 ["wpf_pause_all"] = new() { [Language.English] = "⏸  Pause All", [Language.French] = "⏸  Tout mettre en pause" },
                 ["wpf_resume_all"] = new() { [Language.English] = "▶  Resume All", [Language.French] = "▶  Tout reprendre" },
                 ["wpf_stop_all"] = new() { [Language.English] = "⏹  Stop All", [Language.French] = "⏹  Tout arrêter" },
+
+                // ===== SETTINGS LOG MODE (V3) =====
+                ["settings_log_mode_title"] = new() { [Language.English] = "Transmission Mode", [Language.French] = "Mode de transmission" },
+                ["settings_log_mode_desc"] = new() { [Language.English] = "Choose where logs are stored", [Language.French] = "Choisissez où les logs sont stockés" },
+
+                // ===== LOG MODES ITEMS =====
+                ["log_mode_local"] = new() { [Language.English] = "Local", [Language.French] = "Local" },
+                ["log_mode_centralized"] = new() { [Language.English] = "Centralized", [Language.French] = "Centralisé" },
+                ["log_mode_both"] = new() { [Language.English] = "Local + Centralized", [Language.French] = "Local + Centralisé" },
             };
         }
 

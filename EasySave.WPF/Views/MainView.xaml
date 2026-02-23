@@ -245,6 +245,19 @@
                                 <Button x:Name="BtnLogJson" Content="JSON" Style="{StaticResource BtnTab}" Padding="24,10" Click="BtnLogJson_Click" Margin="0,0,8,0"/>
                                 <Button x:Name="BtnLogXml" Content="XML" Style="{StaticResource BtnTab}" Padding="24,10" Click="BtnLogXml_Click"/>
                             </StackPanel>
+
+                            <TextBlock x:Name="LblSettingsLogMode" Text="Transmission Mode" FontSize="15" 
+               FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}" Margin="0,20,0,6"/>
+                            <TextBlock x:Name="LblSettingsLogModeDesc" Text="Choose where logs are stored" 
+               Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,12"/>
+
+                            <ComboBox x:Name="CmbLogMode" Style="{StaticResource CardComboStyle}" 
+              Height="34" Width="200" HorizontalAlignment="Left"
+              SelectionChanged="CmbLogMode_SelectionChanged">
+                                <ComboBoxItem Content="Local" Tag="Local"/>
+                                <ComboBoxItem Content="Centralized" Tag="Centralized"/>
+                                <ComboBoxItem Content="Both" Tag="Both"/>
+                            </ComboBox>
                         </StackPanel>
                         <!-- LANGUAGE -->
                         <StackPanel x:Name="TabLanguageContent" Visibility="Collapsed" MaxWidth="500" HorizontalAlignment="Left">
