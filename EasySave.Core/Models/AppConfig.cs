@@ -12,6 +12,7 @@ namespace EasySave.Core.Models
         public string BusinessSoftwareName { get; set; } = "CalculatorApp";
         public LogFormat LogFormat { get; set; } = LogFormat.Json;
         public int LargeFileThresholdKo { get; set; } = 1000;
+        public List<string> PriorityExtensions { get; set; } = new();
         public List<BackupJob> Jobs { get; set; } = new();
     }
 }

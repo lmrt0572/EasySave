@@ -86,6 +86,7 @@ namespace EasySave.WPF.Views
             BtnToggleKeyVisibility.Content = "\U0001F512";
             TxtEncryptionExtensions.Text = _viewModel.EncryptionExtensionsText;
             TxtLargeFileThreshold.Text = _viewModel.LargeFileThresholdKo.ToString();
+            TxtPriorityExtensions.Text = _viewModel.PriorityExtensionsText;
 
             BuildThemeSwatches(); BuildDashboardCards();
             SetActiveNav("Jobs"); SetActiveSettingsTab(0);
@@ -710,6 +711,15 @@ namespace EasySave.WPF.Views
             }
         }
 
+        private void TxtPriorityExtensions_LostFocus(object s, RoutedEventArgs e)
+        {
+            if (_viewModel != null)
+            {
+                _viewModel.PriorityExtensionsText = TxtPriorityExtensions.Text.Trim();
+                TxtPriorityExtensions.Text = _viewModel.PriorityExtensionsText;
+            }
+        }
+
         // ===== TRANSLATIONS =====
         private void ApplyTranslations()
         {
@@ -730,6 +740,7 @@ namespace EasySave.WPF.Views
             LblSettingsEncryption.Text = _lang.GetText("settings_encryption"); LblSettingsEncKey.Text = _lang.GetText("settings_encryption_key");
             LblSettingsEncExt.Text = _lang.GetText("settings_encryption_ext");
             LblSettingsLargeFile.Text = _lang.GetText("settings_large_file"); LblSettingsLargeFileDesc.Text = _lang.GetText("settings_large_file_desc");
+            LblSettingsPriorityExt.Text = _lang.GetText("settings_priority_ext"); LblSettingsPriorityExtDesc.Text = _lang.GetText("settings_priority_ext_desc");
             LblSettingsLogFormat.Text = _lang.GetText("settings_log_format");
             LblSettingsLogDesc.Text = _lang.GetText("settings_log_desc"); LblSettingsLangTitle.Text = _lang.GetText("settings_language_title");
             LblSettingsLangDesc.Text = _lang.GetText("settings_language_desc"); LblSettingsThemeTitle.Text = _lang.GetText("settings_theme_title");

@@ -1,20 +1,20 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
+    // ===== JOB EXECUTION CONTEXT =====
+    // Per-job synchronization: pause, resume, stop
+    // Wraps ManualResetEventSlim (pause gate) + CancellationTokenSource (stop)
 
 namespace EasySave.Core.Models
 {
-    // ===== JOB EXECUTION CONTEXT =====
-    // V3.0 - Per-job synchronization: pause, resume, stop
-    // Wraps ManualResetEventSlim (pause gate) + CancellationTokenSource (stop)
-    public class JobExecutionContext : IDisposable
-    {
-        // ===== PRIVATE FIELDS =====
-        private readonly ManualResetEventSlim _pauseGate = new ManualResetEventSlim(true); // starts signaled (not paused)
-        private readonly CancellationTokenSource _cts = new CancellationTokenSource();
-
         // ===== PROPERTIES =====
 
    
+    public class JobExecutionContext : IDisposable
+    {
+        private readonly ManualResetEventSlim _pauseGate = new ManualResetEventSlim(true);
+        private readonly CancellationTokenSource _cts = new CancellationTokenSource();
+
         public string JobName { get; }
 
         public bool PausedByUser { get; private set; }
@@ -28,14 +28,16 @@ namespace EasySave.Core.Models
         public CancellationToken Token => _cts.Token;
 
         public int LargeFileThresholdKo { get; set; }
-
         // ===== CONSTRUCTOR =====
+
+        public IReadOnlyList<string> PriorityExtensions { get; set; } = Array.Empty<string>();
+
         public JobExecutionContext(string jobName)
         {
+        // ===== PAUSE / RESUME / STOP =====
+
             JobName = jobName ?? throw new ArgumentNullException(nameof(jobName));
         }
-
-        // ===== PAUSE / RESUME / STOP =====
 
         public void Pause()
         {
@@ -64,6 +66,8 @@ namespace EasySave.Core.Models
                 _pauseGate.Set();
         }
 
+        // ===== SYNCHRONIZATION CHECKPOINT =====
+
         public void Stop()
         {
             _cts.Cancel();
@@ -71,14 +75,13 @@ namespace EasySave.Core.Models
         }
 
         // ===== SYNCHRONIZATION CHECKPOINT =====
-
+        // ===== DISPOSE =====
         public void ThrowIfStoppedOrWaitIfPaused()
         {
             _cts.Token.ThrowIfCancellationRequested();
             _pauseGate.Wait(_cts.Token);
         }
 
-        // ===== DISPOSE =====
         public void Dispose()
         {
             _pauseGate.Dispose();
