@@ -4,6 +4,9 @@ using System.Windows.Media;
 
 namespace EasySave.WPF.Helpers
 {
+    // ===== THEME COLOR KEYS =====
+    // Centralizes theme color keys so views use GetBrush(key) instead of repeating hex fallbacks.
+    public static class ThemeColorsHelper
     {
         public const string AccentPrimary = "AccentPrimary";
         public const string AccentLight = "AccentLight";
