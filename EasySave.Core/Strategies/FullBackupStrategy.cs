@@ -8,12 +8,11 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-    // ===== FULL BACKUP STRATEGY =====
 
 namespace EasySave.Core.Strategies
-        // ===== EXECUTION (Console compatibility) =====
 {
-    public class FullBackupStrategy : IBackupStrategy
+    // ===== FULL BACKUP STRATEGY =====
+    public class FullBackupStrategy : BaseBackupStrategy
     {
         // ===== EXECUTION (with pause/stop support + large file coordination) =====
         public async Task Execute(BackupJob job, IEncryptionService encryptionService, Action<string, string, long, long, int> onFileCompleted)
@@ -139,6 +138,10 @@ namespace EasySave.Core.Strategies
                 // ===== RELEASE LARGE FILE SLOT IF USED =====
                 LargeFileTransferCoordinator.Instance.ReleaseSlotIfLarge(fileSize, thresholdKo);
             }
+        // ===== FILE SELECTION =====
+        protected override List<string> GetFilesToProcess(BackupJob job)
+        {
+            return FileUtils.GetAllFilesRecursive(job.SourceDirectory).ToList();
         }
     }
 }

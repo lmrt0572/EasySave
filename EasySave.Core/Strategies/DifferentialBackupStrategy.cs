@@ -8,12 +8,11 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-    // ===== DIFFERENTIAL BACKUP STRATEGY =====
 
 namespace EasySave.Core.Strategies
-        // ===== EXECUTION (Console compatibility) =====
 {
-    public class DifferentialBackupStrategy : IBackupStrategy
+    // ===== DIFFERENTIAL BACKUP STRATEGY =====
+    public class DifferentialBackupStrategy : BaseBackupStrategy
     {
         // ===== EXECUTION (with pause/stop support + large file coordination) =====
         public async Task Execute(BackupJob job, IEncryptionService encryptionService, Action<string, string, long, long, int> onFileCompleted)
@@ -24,15 +23,12 @@ namespace EasySave.Core.Strategies
             }
 
         public async Task Execute(BackupJob job, IEncryptionService encryptionService, Action<string, string, long, long, int> onFileCompleted, JobExecutionContext context, Action<string, string>? onFileStarted = null)
+        // ===== FILE SELECTION =====
+        protected override List<string> GetFilesToProcess(BackupJob job)
         {
-            // ===== SOURCE DIRECTORY CHECK =====
-            if (!FileUtils.DirectoryExists(job.SourceDirectory))
-                throw new DirectoryNotFoundException($"Source directory not found: {job.SourceDirectory}");
+            var allFiles = FileUtils.GetAllFilesRecursive(job.SourceDirectory);
 
-            var allFiles = FileUtils.GetAllFilesRecursive(job.SourceDirectory).ToList();
-            var filesToCopy = new List<string>();
-            foreach (var sourceFile in allFiles)
-            {
+            return allFiles.Where(sourceFile => {
                 var relativePath = Path.GetRelativePath(job.SourceDirectory, sourceFile);
                 var targetFile = Path.Combine(job.TargetDirectory, relativePath);
                 if (File.Exists(targetFile) && File.GetLastWriteTime(sourceFile) <= File.GetLastWriteTime(targetFile))
@@ -127,28 +123,9 @@ namespace EasySave.Core.Strategies
                 else
                     FileUtils.CopyFile(sourceFile, targetFile);
 
-                stopwatch.Stop();
-                // ===== ENCRYPT IF EXTENSION TARGETED (CryptoSoft) =====
-                if (encryptionService.IsExtensionTargeted(targetFile))
-                    cryptTime = await encryptionService.EncryptAsync(targetFile);
-                // ===== NOTIFY COMPLETION (state + log) =====
-                onFileCompleted(sourceFile, targetFile, fileSize, stopwatch.ElapsedMilliseconds, cryptTime);
-            }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
-            catch (Exception)
-            {
-                if (stopwatch.IsRunning) stopwatch.Stop();
-                onFileCompleted(sourceFile, targetFile, 0, -1, -1);
-                throw;
-            }
-            finally
-            {
-                // ===== RELEASE LARGE FILE SLOT IF USED =====
-                LargeFileTransferCoordinator.Instance.ReleaseSlotIfLarge(fileSize, thresholdKo);
-            }
+                // Only process if target doesn't exist or source is newer
+                return !File.Exists(targetFile) || File.GetLastWriteTime(sourceFile) > File.GetLastWriteTime(targetFile);
+            }).ToList();
         }
     }
 }
