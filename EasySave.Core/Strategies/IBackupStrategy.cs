@@ -10,13 +10,9 @@ namespace EasySave.Core.Strategies
     // ===== BACKUP STRATEGY INTERFACE =====
     public interface IBackupStrategy
     {
+        // ===== EXECUTION METHODS =====
         Task Execute(BackupJob job, IEncryptionService encryptionService, Action<string, string, long, long, int> onFileCompleted);
 
         Task Execute(BackupJob job, IEncryptionService encryptionService, Action<string, string, long, long, int> onFileCompleted, JobExecutionContext context, Action<string, string>? onFileStarted = null);
-        // ===== EXECUTION METHODS =====
-
-        Task Execute(BackupJob job, IEncryptionService encryptionService, Action<string, string, long, long, int> onFileCompleted);
-
-        Task Execute(BackupJob job, IEncryptionService encryptionService, Action<string, string, long, long, int> onFileCompleted, JobExecutionContext context);
     }
 }
