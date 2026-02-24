@@ -178,9 +178,6 @@ namespace EasySave.Core.Services
             {
                 await _strategy.Execute(job, _encryptionService, (source, target, size, timeMs, cryptTime) =>
                 {
-                    // V3 - The pause/stop check is already done in the strategy via context.ThrowIfStoppedOrWaitIfPaused()
-                    // Here we just update state and log
-
                     _currentFile = source;
                     _completedFiles++;
 
@@ -208,7 +205,12 @@ namespace EasySave.Core.Services
                         TransferTimeMs = timeMs,
                         EncryptionTimeMs = cryptTime
                     });
-                }, context);
+                }, context, onFileStarted: (source, target) =>
+                {
+                    state.UpdateCurrentFile(source, target);
+                    _stateService.UpdateJobState(state);
+                    StateUpdated?.Invoke(state);
+                });
 
                 state.Finish();
                 _stateService.UpdateJobState(state);
