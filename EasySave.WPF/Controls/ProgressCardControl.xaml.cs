@@ -73,7 +73,6 @@ namespace EasySave.WPF.Controls
             switch (_info.Status)
             {
                 case BackupStatus.Running:
-                case BackupStatus.Active:
                     StatusBadge.Background = new SolidColorBrush(Color.FromArgb(0x20, ss.Color.R, ss.Color.G, ss.Color.B));
                     TxtStatus.Text = _labelRunning;
                     TxtStatus.Foreground = ss;

@@ -14,7 +14,7 @@ namespace EasySave.Core.Models
         private int _totalFiles;
         private int _remainingFiles;
         private string _currentFile = string.Empty;
-        private BackupStatus _status = BackupStatus.Inactive;
+        private BackupStatus _status = BackupStatus.Paused;
 
         // ===== EVENTS =====
         public event PropertyChangedEventHandler? PropertyChanged;
@@ -51,7 +51,7 @@ namespace EasySave.Core.Models
             get => _status;
             set { _status = value; OnPropertyChanged(); OnPropertyChanged(nameof(IsRunning)); OnPropertyChanged(nameof(IsPaused)); }
         }
-        public bool IsRunning => _status == BackupStatus.Running || _status == BackupStatus.Active;
+        public bool IsRunning => _status == BackupStatus.Running;
 
         public bool IsPaused => _status == BackupStatus.Paused;
 

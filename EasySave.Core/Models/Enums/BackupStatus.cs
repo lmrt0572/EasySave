@@ -7,8 +7,6 @@ namespace EasySave.Core.Models.Enums
     // ===== BACKUP STATUS =====
     public enum BackupStatus
     {
-        Inactive,
-        Active,
         Completed,
         Error,
         Stopped,    
