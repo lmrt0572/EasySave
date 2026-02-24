@@ -5,7 +5,7 @@ using EasySave.Core.Models.Enums;
 namespace EasySave.Core.Models
 {
     // ===== JOB PROGRESS INFO =====
-    // V3.0 - Observable per-job progress for WPF binding
+    // Observable per-job progress for WPF binding
     // Each running job gets one instance, displayed in the UI ItemsControl
     public class JobProgressInfo : INotifyPropertyChanged
     {

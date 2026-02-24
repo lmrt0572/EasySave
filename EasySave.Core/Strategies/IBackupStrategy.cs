@@ -9,6 +9,7 @@ namespace EasySave.Core.Strategies
     {
         Task Execute(BackupJob job, IEncryptionService encryptionService,
             Action<string, string, long, long, int> onFileCompleted,
-            JobExecutionContext context);
+            JobExecutionContext context,
+            Action<string, string>? onFileStarted = null);
     }
 }
