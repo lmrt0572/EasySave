@@ -67,7 +67,12 @@ namespace EasySave.Core.Services
                         TransferTimeMs = timeMs,
                         EncryptionTimeMs = cryptTime
                     });
-                }, context);
+                }, context, onFileStarted: (source, target) =>
+                {
+                    state.UpdateCurrentFile(source, target);
+                    _stateService.UpdateJobState(state);
+                    StateUpdated?.Invoke(state);
+                });
 
                 state.Finish();
                 Notify(state);
