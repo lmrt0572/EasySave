@@ -32,10 +32,41 @@
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <TextBox x:Name="TxtEncryptionKey" Style="{StaticResource CardInputStyle}" Grid.Column="0" Visibility="Collapsed" LostFocus="TxtEncryptionKey_LostFocus"/>
-                        <PasswordBox x:Name="PwdEncryptionKey" Grid.Column="0" LostFocus="PwdEncryptionKey_LostFocus"
-                                     Background="{DynamicResource BgCard}" Foreground="{DynamicResource TextPrimary}" 
-                                     BorderBrush="{DynamicResource BorderLight}" BorderThickness="1"
-                                     Padding="12,9" FontSize="12" FontFamily="Segoe UI"/>
+                        <PasswordBox x:Name="PwdEncryptionKey" Grid.Column="0" 
+             LostFocus="PwdEncryptionKey_LostFocus"
+             Background="#F5E6D3" 
+             Foreground="#553f2a" 
+             FontSize="12" 
+             Height="34" 
+             Padding="10,0"
+             VerticalContentAlignment="Center">
+                            <PasswordBox.Style>
+                                <Style TargetType="PasswordBox">
+                                    <Setter Property="BorderBrush" Value="#DBBFA0"/>
+                                    <Setter Property="BorderThickness" Value="1"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="PasswordBox">
+                                                <Border x:Name="bd" 
+                                Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}" 
+                                BorderThickness="{TemplateBinding BorderThickness}" 
+                                CornerRadius="8">
+                                                    <ScrollViewer x:Name="PART_ContentHost" 
+                                          VerticalAlignment="Center" 
+                                          Margin="{TemplateBinding Padding}"/>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsFocused" Value="True">
+                                                        <Setter TargetName="bd" Property="BorderBrush" Value="#a67847"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </PasswordBox.Style>
+                        </PasswordBox>
                         <Button x:Name="BtnToggleKeyVisibility" Grid.Column="1" Content="&#x1F512;" Style="{StaticResource BtnIcon}" Width="34" Height="34" Margin="4,0,0,0" Click="BtnToggleKeyVisibility_Click" ToolTip="Show/Hide key"/>
                     </Grid>
                     <TextBlock x:Name="LblSettingsEncExt" Text="Target Extensions" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
