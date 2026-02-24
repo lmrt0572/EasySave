@@ -23,7 +23,7 @@ namespace EasySave.Core.Strategies
         }
             }
 
-        public async Task Execute(BackupJob job, IEncryptionService encryptionService, Action<string, string, long, long, int> onFileCompleted, JobExecutionContext context)
+        public async Task Execute(BackupJob job, IEncryptionService encryptionService, Action<string, string, long, long, int> onFileCompleted, JobExecutionContext context, Action<string, string>? onFileStarted = null)
         {
             // ===== SOURCE DIRECTORY CHECK =====
             if (!FileUtils.DirectoryExists(job.SourceDirectory))
@@ -40,7 +40,7 @@ namespace EasySave.Core.Strategies
                 {
                     // ===== PAUSE / STOP (wait if paused by monitor or user; throw if stop requested) =====
                     context?.ThrowIfStoppedOrWaitIfPaused();
-                    await ProcessOneFileAsync(job, sourceFile, thresholdKo, encryptionService, onFileCompleted, context);
+                    await ProcessOneFileAsync(job, sourceFile, thresholdKo, encryptionService, onFileCompleted, context, onFileStarted);
                 }
                 return;
             }
@@ -57,7 +57,7 @@ namespace EasySave.Core.Strategies
 
                     // ===== PRIORITY FILE ? Yes → process now ; No → leave for later =====
                     if (IsPriorityFile(sourceFile, priorityExtensions))
-                        await ProcessOneFileAsync(job, sourceFile, thresholdKo, encryptionService, onFileCompleted, context);
+                        await ProcessOneFileAsync(job, sourceFile, thresholdKo, encryptionService, onFileCompleted, context, onFileStarted);
                     else
                         deferredFiles.Add(sourceFile);
                 }
@@ -70,7 +70,7 @@ namespace EasySave.Core.Strategies
                 {
                     // ===== PAUSE / STOP (wait if paused; throw if stopped) =====
                     context.ThrowIfStoppedOrWaitIfPaused();
-                    await ProcessOneFileAsync(job, sourceFile, thresholdKo, encryptionService, onFileCompleted, context);
+                    await ProcessOneFileAsync(job, sourceFile, thresholdKo, encryptionService, onFileCompleted, context, onFileStarted);
                 }
             }
             finally
@@ -96,10 +96,12 @@ namespace EasySave.Core.Strategies
 
         private static async Task ProcessOneFileAsync(BackupJob job, string sourceFile, int thresholdKo,
             IEncryptionService encryptionService, Action<string, string, long, long, int> onFileCompleted,
-            JobExecutionContext? context)
+            JobExecutionContext? context, Action<string, string>? onFileStarted = null)
         {
             var relativePath = Path.GetRelativePath(job.SourceDirectory, sourceFile);
             var targetFile = Path.Combine(job.TargetDirectory, relativePath);
+            onFileStarted?.Invoke(sourceFile, targetFile);
+
             long fileSize = FileUtils.GetFileSize(sourceFile);
 
             // ===== LARGE FILE ? Wait for slot if size > n Ko (parallel transfer restriction) =====
