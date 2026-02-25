@@ -13,6 +13,7 @@ namespace EasySave.WPF.Controls
     {
         private JobProgressInfo? _info;
         private Button? _btnPause;
+        private Button? _btnStop;
         private string _labelRunning = "Running", _labelPaused = "Paused", _labelStopped = "Stopped", _labelCompleted = "Completed";
 
         public ProgressCardControl()
@@ -36,14 +37,14 @@ namespace EasySave.WPF.Controls
             };
             ControlsPanel.Children.Add(_btnPause);
 
-            var btnStop = MkBtn("\u25A0", accent, "Stop");
-            btnStop.Tag = info.JobName;
-            btnStop.Click += (s, e) =>
+            _btnStop = MkBtn("\u25A0", accent, "Stop");
+            _btnStop.Tag = info.JobName;
+            _btnStop.Click += (s, e) =>
             {
                 e.Handled = true;
                 onStop(info.JobName);
             };
-            ControlsPanel.Children.Add(btnStop);
+            ControlsPanel.Children.Add(_btnStop);
 
             ProgressFill.Background = new LinearGradientBrush(
                 ThemeColorsHelper.GetColorValue(ThemeColorsHelper.AccentPrimary),
@@ -99,6 +100,12 @@ namespace EasySave.WPF.Controls
                 _btnPause.Content = _info.IsPaused ? "\u25B6" : "\u2502\u2502";
                 _btnPause.ToolTip = _info.IsPaused ? "Resume" : "Pause";
             }
+        }
+
+        public void SetActionButtonsEnabled(bool enabled)
+        {
+            if (_btnPause != null) _btnPause.IsEnabled = enabled;
+            if (_btnStop != null) _btnStop.IsEnabled = enabled;
         }
 
         // ===== LABELS AND THEME =====

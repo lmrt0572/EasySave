@@ -25,6 +25,14 @@ namespace EasySave.WPF.Controls
             System.Windows.DependencyProperty.Register(nameof(CanExecute), typeof(bool), typeof(JobCardControl),
                 new PropertyMetadata(true, (d, _) => ((JobCardControl)d).UpdatePlayButtonEnabled()));
 
+        public static readonly System.Windows.DependencyProperty CanEditProperty =
+            System.Windows.DependencyProperty.Register(nameof(CanEdit), typeof(bool), typeof(JobCardControl),
+                new PropertyMetadata(true, (d, _) => ((JobCardControl)d).UpdateEditButtonEnabled()));
+
+        public static readonly System.Windows.DependencyProperty CanDeleteProperty =
+            System.Windows.DependencyProperty.Register(nameof(CanDelete), typeof(bool), typeof(JobCardControl),
+                new PropertyMetadata(true, (d, _) => ((JobCardControl)d).UpdateDeleteButtonEnabled()));
+
         public BackupJob? Job
         {
             get => (BackupJob?)GetValue(JobProperty);
@@ -43,11 +51,25 @@ namespace EasySave.WPF.Controls
             set => SetValue(CanExecuteProperty, value);
         }
 
+        public bool CanEdit
+        {
+            get => (bool)GetValue(CanEditProperty);
+            set => SetValue(CanEditProperty, value);
+        }
+
+        public bool CanDelete
+        {
+            get => (bool)GetValue(CanDeleteProperty);
+            set => SetValue(CanDeleteProperty, value);
+        }
+
         public event EventHandler? PlayClick;
         public event EventHandler? EditClick;
         public event EventHandler? DeleteClick;
 
         private Button? _playButton;
+        private Button? _editButton;
+        private Button? _deleteButton;
 
         // ===== CONSTRUCTOR =====
         public JobCardControl()
@@ -80,13 +102,13 @@ namespace EasySave.WPF.Controls
             _playButton.Click += (s, e) => { e.Handled = true; PlayClick?.Invoke(this, EventArgs.Empty); };
             ActionsPanel.Children.Add(_playButton);
 
-            var editBtn = MkBtn("\u270F", textSec, true);
-            editBtn.Click += (s, e) => { e.Handled = true; EditClick?.Invoke(this, EventArgs.Empty); };
-            ActionsPanel.Children.Add(editBtn);
+            _editButton = MkBtn("\u270F", textSec, CanEdit);
+            _editButton.Click += (s, e) => { e.Handled = true; EditClick?.Invoke(this, EventArgs.Empty); };
+            ActionsPanel.Children.Add(_editButton);
 
-            var delBtn = MkBtn("\u2715", danger, true);
-            delBtn.Click += (s, e) => { e.Handled = true; DeleteClick?.Invoke(this, EventArgs.Empty); };
-            ActionsPanel.Children.Add(delBtn);
+            _deleteButton = MkBtn("\u2715", danger, CanDelete);
+            _deleteButton.Click += (s, e) => { e.Handled = true; DeleteClick?.Invoke(this, EventArgs.Empty); };
+            ActionsPanel.Children.Add(_deleteButton);
 
             CardBorder.MouseEnter += Card_MouseEnter;
             CardBorder.MouseLeave += Card_MouseLeave;
@@ -119,6 +141,18 @@ namespace EasySave.WPF.Controls
         {
             if (_playButton != null)
                 _playButton.IsEnabled = CanExecute;
+        }
+
+        private void UpdateEditButtonEnabled()
+        {
+            if (_editButton != null)
+                _editButton.IsEnabled = CanEdit;
+        }
+
+        private void UpdateDeleteButtonEnabled()
+        {
+            if (_deleteButton != null)
+                _deleteButton.IsEnabled = CanDelete;
         }
 
         public void SetTypeLabel(string fullText, string differentialText)

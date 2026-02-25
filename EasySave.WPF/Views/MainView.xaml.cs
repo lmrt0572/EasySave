@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
@@ -35,6 +36,7 @@ namespace EasySave.WPF.Views
         };
 
         private readonly Dictionary<string, ProgressCardControl> _progressCards = new();
+        private readonly Dictionary<string, (JobProgressInfo info, PropertyChangedEventHandler handler)> _progressCardSubscriptions = new();
 
         // ===== CONSTRUCTOR =====
         public MainView()
@@ -50,7 +52,7 @@ namespace EasySave.WPF.Views
                 {
                     case nameof(WpfViewModel.StatusMessage): TxtStatus.Text = _viewModel.StatusMessage; break;
                     case nameof(WpfViewModel.IsBusinessSoftwareDetected):
-                        UpdateWarning(); UpdateDashboard();
+                        UpdateWarning(); UpdateDashboard(); UpdateGlobalControlButtons();
                         break;
                     case nameof(WpfViewModel.CanExecute): BtnExecuteAll.IsEnabled = _viewModel.CanExecute; SyncPlayButtons(); break;
                     case nameof(WpfViewModel.IsExecuting): SyncPlayButtons(); break;
@@ -67,6 +69,7 @@ namespace EasySave.WPF.Views
             {
                 RefreshProgressCards();
                 UpdateJobCardsRunningState();
+                UpdateGlobalControlButtons();
                 ActiveJobsEncart.Visibility = _viewModel.RunningJobsProgress.Count > 0
                     ? Visibility.Visible
                     : Visibility.Collapsed;
@@ -95,6 +98,7 @@ namespace EasySave.WPF.Views
             UpdateWarning();
             UpdateDashboard();
             BtnExecuteAll.IsEnabled = _viewModel.CanExecute;
+            UpdateGlobalControlButtons();
 
             foreach (ComboBoxItem item in SettingsPanel.LogModeCombo.Items)
             {
@@ -292,11 +296,17 @@ namespace EasySave.WPF.Views
             var toRemove = _progressCards.Keys.Where(k => !activeNames.Contains(k)).ToList();
             foreach (var name in toRemove)
             {
+                if (_progressCardSubscriptions.TryGetValue(name, out var sub))
+                {
+                    sub.info.PropertyChanged -= sub.handler;
+                    _progressCardSubscriptions.Remove(name);
+                }
                 if (_progressCards.TryGetValue(name, out var oldCard))
                     ProgressItemsControl.Items.Remove(oldCard);
                 _progressCards.Remove(name);
             }
 
+            bool blockProgressButtons = _viewModel.IsBusinessSoftwareDetected && _viewModel.RunningJobsProgress.Count > 0;
             var (run, paused, stopped, completed) = GetProgressLabels();
             foreach (var info in _viewModel.RunningJobsProgress)
             {
@@ -309,11 +319,24 @@ namespace EasySave.WPF.Views
                         else _viewModel.PauseJob(jobName);
                     }, _viewModel.StopJob);
                     card.SetStatusLabels(run, paused, stopped, completed);
+                    card.SetActionButtonsEnabled(!blockProgressButtons);
                     _progressCards[info.JobName] = card;
                     ProgressItemsControl.Items.Add(card);
+
+                    PropertyChangedEventHandler handler = (s, e) =>
+                    {
+                        if (e.PropertyName == nameof(JobProgressInfo.Status))
+                            Dispatcher.Invoke(UpdateGlobalControlButtons);
+                    };
+                    info.PropertyChanged += handler;
+                    _progressCardSubscriptions[info.JobName] = (info, handler);
                 }
                 else
-                    _progressCards[info.JobName].SetStatusLabels(run, paused, stopped, completed);
+                {
+                    var card = _progressCards[info.JobName];
+                    card.SetStatusLabels(run, paused, stopped, completed);
+                    card.SetActionButtonsEnabled(!blockProgressButtons);
+                }
             }
         }
 
@@ -338,11 +361,15 @@ namespace EasySave.WPF.Views
             {
                 foreach (var job in jobs)
                 {
+                    bool blockEdit = _viewModel.IsBusinessSoftwareDetected && _viewModel.RunningJobsProgress.Count > 0;
+                    bool isRunning = _viewModel.IsJobRunning(job.Name);
                     var card = new JobCardControl
                     {
                         Job = job,
-                        IsRunning = _viewModel.IsJobRunning(job.Name),
-                        CanExecute = _viewModel.CanExecute
+                        IsRunning = isRunning,
+                        CanExecute = _viewModel.CanExecute,
+                        CanEdit = !isRunning && !blockEdit,
+                        CanDelete = !isRunning && !blockEdit
                     };
                     card.SetTypeLabel(_lang.GetText("type_full"), _lang.GetText("type_differential"));
                     card.PlayClick += (s, _) =>
@@ -373,10 +400,20 @@ namespace EasySave.WPF.Views
                     var jobName = card.Job?.Name;
                     if (jobName != null)
                     {
-                        card.IsRunning = _viewModel.IsJobRunning(jobName);
+                        bool isRunning = _viewModel.IsJobRunning(jobName);
+                        bool blockEdit = _viewModel.IsBusinessSoftwareDetected && _viewModel.RunningJobsProgress.Count > 0;
+                        card.IsRunning = isRunning;
+                        card.CanEdit = !isRunning && !blockEdit;
+                        card.CanDelete = !isRunning && !blockEdit;
                         card.RefreshTheme();
                     }
                 }
+            }
+            // Disable Update button in edit form when the job being edited is running or when business software + job running.
+            if (_editingJob != null)
+            {
+                bool blockEdit = _viewModel.IsBusinessSoftwareDetected && _viewModel.RunningJobsProgress.Count > 0;
+                BtnCreate.IsEnabled = !_viewModel.IsJobRunning(_editingJob.Name) && !blockEdit;
             }
         }
 
@@ -386,12 +423,15 @@ namespace EasySave.WPF.Views
             _editingJob = job; TxtName.Text = job.Name; TxtSource.Text = job.SourceDirectory; TxtTarget.Text = job.TargetDirectory;
             CmbType.SelectedIndex = job.Type == BackupType.Differential ? 1 : 0;
             TxtCreateTitle.Text = _lang.GetText("jobs_edit_title"); BtnCreate.Content = _lang.GetText("wpf_btn_update"); SetActiveNav("Jobs");
+            bool blockEdit = _viewModel.IsBusinessSoftwareDetected && _viewModel.RunningJobsProgress.Count > 0;
+            BtnCreate.IsEnabled = !_viewModel.IsJobRunning(job.Name) && !blockEdit;
         }
 
         private void ClearCreateForm()
         {
             TxtName.Clear(); TxtSource.Clear(); TxtTarget.Clear(); CmbType.SelectedIndex = 0; _editingJob = null;
             TxtCreateTitle.Text = _lang.GetText("jobs_create_title"); BtnCreate.Content = _lang.GetText("wpf_btn_add");
+            BtnCreate.IsEnabled = true;
         }
 
         // ===== JOB FORM AND ACTIONS =====
@@ -535,6 +575,20 @@ namespace EasySave.WPF.Views
             foreach (var child in JobListPanel.Children)
                 if (child is JobCardControl card)
                     card.CanExecute = can;
+        }
+
+        // Pause All: enabled only when at least one job is running (not paused). Resume All: only when at least one is paused. Stop All: when any job is active. All disabled when business software + job running. Same block applies to per-card Pause/Resume and Stop.
+        private void UpdateGlobalControlButtons()
+        {
+            var progress = _viewModel.RunningJobsProgress;
+            bool blockGlobalControls = _viewModel.IsBusinessSoftwareDetected && progress.Count > 0;
+            bool hasRunning = progress.Any(p => p.IsRunning);
+            bool hasPaused = progress.Any(p => p.IsPaused);
+            BtnPauseAll.IsEnabled = hasRunning && !blockGlobalControls;
+            BtnResumeAll.IsEnabled = hasPaused && !blockGlobalControls;
+            BtnStopAll.IsEnabled = progress.Count > 0 && !blockGlobalControls;
+            foreach (var card in _progressCards.Values)
+                card.SetActionButtonsEnabled(!blockGlobalControls);
         }
 
         // ===== LIFECYCLE =====
