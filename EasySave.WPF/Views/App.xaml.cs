@@ -83,6 +83,9 @@ namespace EasySave.WPF
         // Called by Program.Main when command-line args are provided.
         internal static void RunCli(string[] args)
         {
+            // WinExe has no console by default; attach to parent (e.g. cmd) or allocate one so output is visible.
+            AttachOrAllocConsole();
+
             Console.WriteLine();
             Console.WriteLine($"Executing jobs: {string.Join(" ", args)}");
             Console.WriteLine();
