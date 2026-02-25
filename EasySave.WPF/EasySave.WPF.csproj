@@ -5,6 +5,7 @@
 	</ItemGroup>
 
 	<PropertyGroup>
+		<AssemblyName>EasySave</AssemblyName>
 		<OutputType>WinExe</OutputType>
 		<GenerateApplicationEntryPoint>false</GenerateApplicationEntryPoint>
 		<StartupObject>EasySave.WPF.Program</StartupObject>

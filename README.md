@@ -109,6 +109,7 @@ The application can also be executed via command-line arguments:
 
 ```bash
 EasySave.exe 1-3       # Run jobs 1 to 3
+EasySave.exe 1 ;3      # Run jobs 1 and 3
 EasySave.exe 1;3;5     # Run jobs 1, 3 and 5
 EasySave.exe 2         # Run job 2
 ```
