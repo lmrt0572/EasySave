@@ -224,13 +224,6 @@ namespace EasySave.Core.ViewModels
         public async Task ExecuteJob(BackupJob job)
         {
             if (job == null) return;
-            if (_monitor.CheckNow())
-            {
-                IsBusinessSoftwareDetected = true;
-                StatusMessage = _languageManager.GetText("error_business_software");
-                ShowNotification(_languageManager.GetText("error_business_software"), "error");
-                return;
-            }
 
             IsExecuting = true;
 
@@ -272,13 +265,6 @@ namespace EasySave.Core.ViewModels
         public async Task ExecuteAllJobs()
         {
             if (_config.Jobs.Count == 0) return;
-            if (_monitor.CheckNow())
-            {
-                IsBusinessSoftwareDetected = true;
-                StatusMessage = _languageManager.GetText("error_business_software");
-                ShowNotification(_languageManager.GetText("error_business_software"), "error");
-                return;
-            }
 
             IsExecuting = true;
 
