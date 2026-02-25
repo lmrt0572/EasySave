@@ -5,7 +5,9 @@
 	</ItemGroup>
 
 	<PropertyGroup>
-		<OutputType>WinExe</OutputType>
+		<OutputType>Exe</OutputType>
+		<GenerateApplicationEntryPoint>false</GenerateApplicationEntryPoint>
+		<StartupObject>EasySave.WPF.Program</StartupObject>
 		<TargetFramework>net10.0-windows</TargetFramework>
 		<RollForward>Major</RollForward>
 		<Nullable>enable</Nullable>

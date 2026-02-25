@@ -16,5 +16,6 @@ namespace EasySave.Core.Models
         public int LargeFileThresholdKo { get; set; } = 1000;
         public List<string> PriorityExtensions { get; set; } = new();
         public List<BackupJob> Jobs { get; set; } = new();
+
     }
 }
