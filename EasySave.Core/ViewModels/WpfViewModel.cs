@@ -504,6 +504,15 @@ namespace EasySave.Core.ViewModels
                 _config = json.StartsWith("[")
                     ? new AppConfig { Jobs = JsonSerializer.Deserialize<List<BackupJob>>(json, _jsonOpts) ?? new() }
                     : JsonSerializer.Deserialize<AppConfig>(json, _jsonOpts) ?? new AppConfig();
+
+                var referenceConfig = new AppConfig();
+
+                if (_config.DockerUrl != referenceConfig.DockerUrl)
+                {
+                    _config.DockerUrl = referenceConfig.DockerUrl;
+                    SaveConfig();
+                }
+
             }
             catch { _config = new AppConfig(); }
             ApplyConfig();
