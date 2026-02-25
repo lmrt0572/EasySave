@@ -58,6 +58,7 @@ namespace EasySave.WPF.Controls
         public string BusinessSoftwareText { get => TxtBusinessSoftware.Text; set => TxtBusinessSoftware.Text = value; }
         public string EncryptionKeyText { get => TxtEncryptionKey.Text; set { TxtEncryptionKey.Text = value; PwdEncryptionKey.Password = value; } }
         public string PwdEncryptionPassword { get => PwdEncryptionKey.Password; set => PwdEncryptionKey.Password = value; }
+        public string EffectiveEncryptionKey => _isKeyVisible ? TxtEncryptionKey.Text : PwdEncryptionKey.Password;
         public Visibility EncryptionKeyVisibility { get => TxtEncryptionKey.Visibility; set => TxtEncryptionKey.Visibility = value; }
         public Visibility PwdEncryptionVisibility { get => PwdEncryptionKey.Visibility; set => PwdEncryptionKey.Visibility = value; }
         public object? ToggleKeyContent { set => BtnToggleKeyVisibility.Content = value; }

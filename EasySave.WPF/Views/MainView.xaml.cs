@@ -113,8 +113,8 @@ namespace EasySave.WPF.Views
             SettingsPanel.BusinessSoftwareTextChanged += (_, _) => _viewModel.BusinessSoftwareName = SettingsPanel.BusinessSoftwareText.Trim();
             SettingsPanel.EncryptionKeyLostFocus += (_, _) =>
             {
-                _viewModel.EncryptionKey = SettingsPanel.PwdEncryptionPassword.Trim();
-                SettingsPanel.EncryptionKeyText = SettingsPanel.PwdEncryptionPassword;
+                _viewModel.EncryptionKey = SettingsPanel.EffectiveEncryptionKey.Trim();
+                SettingsPanel.EncryptionKeyText = _viewModel.EncryptionKey;
             };
             SettingsPanel.EncryptionExtensionsLostFocus += (_, _) => _viewModel.EncryptionExtensionsText = SettingsPanel.EncryptionExtensionsText.Trim();
             SettingsPanel.LargeFileThresholdLostFocus += (_, _) =>

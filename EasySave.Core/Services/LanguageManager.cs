@@ -115,6 +115,8 @@ namespace EasySave.Core.Models.Enums
                 ["settings_encryption_ext"] = new() { [Language.English] = "Target Extensions", [Language.French] = "Extensions cibles" },
                 ["settings_large_file"] = new() { [Language.English] = "Large File Threshold (Ko)", [Language.French] = "Seuil fichier volumineux (Ko)" },
                 ["settings_large_file_desc"] = new() { [Language.English] = "Only one file above this size transfers at a time (0 = disabled)", [Language.French] = "Un seul fichier au-dessus de ce seuil à la fois (0 = désactivé)" },
+                ["settings_priority_ext"] = new() { [Language.English] = "Priority extensions", [Language.French] = "Extensions prioritaires" },
+                ["settings_priority_ext_desc"] = new() { [Language.English] = "Comma-separated; these files are saved before others across all jobs (empty = no priority)", [Language.French] = "Séparées par des virgules ; ces fichiers sont sauvegardés avant les autres pour tous les travaux (vide = pas de priorité)" },
 
                 // ===== SETTINGS LOGS =====
                 ["settings_log_format"] = new() { [Language.English] = "Log Format", [Language.French] = "Format des journaux" },
