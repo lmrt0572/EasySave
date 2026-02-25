@@ -1,4 +1,4 @@
-﻿using EasySave.Core.Models;
+using EasySave.Core.Models;
 using EasySave.Core.Services;
 using EasySave.Core.Utils;
 using System;
@@ -37,34 +37,23 @@ namespace EasySave.Core.Strategies
                 return;
             }
 
-            // ===== PRIORITY COORDINATION =====
-            PriorityFileCoordinator.Instance.RegisterJob(context.JobName);
+            // ===== PRIORITY: each job processes its priority files first, then non-priority (no cross-job wait) =====
             var deferredFiles = new List<string>();
 
-            try
+            foreach (var file in filesToCopy)
             {
-                foreach (var file in filesToCopy)
-                {
-                    context.ThrowIfStoppedOrWaitIfPaused();
+                context.ThrowIfStoppedOrWaitIfPaused();
 
-                    if (IsPriorityFile(file, priorityExtensions))
-                        await ProcessOneFileAsync(job, file, thresholdKo, encryptionService, onFileCompleted, context, onFileStarted);
-                    else
-                        deferredFiles.Add(file);
-                }
-
-                PriorityFileCoordinator.Instance.NotifyPriorityPhaseDone(context.JobName);
-                await PriorityFileCoordinator.Instance.WaitUntilCanTransferNonPriorityAsync(context.Token);
-
-                foreach (var file in deferredFiles)
-                {
-                    context.ThrowIfStoppedOrWaitIfPaused();
+                if (IsPriorityFile(file, priorityExtensions))
                     await ProcessOneFileAsync(job, file, thresholdKo, encryptionService, onFileCompleted, context, onFileStarted);
-                }
+                else
+                    deferredFiles.Add(file);
             }
-            finally
+
+            foreach (var file in deferredFiles)
             {
-                PriorityFileCoordinator.Instance.UnregisterJob(context.JobName);
+                context.ThrowIfStoppedOrWaitIfPaused();
+                await ProcessOneFileAsync(job, file, thresholdKo, encryptionService, onFileCompleted, context, onFileStarted);
             }
         }
 
