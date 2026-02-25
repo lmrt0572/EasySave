@@ -418,6 +418,8 @@ namespace EasySave.Core.ViewModels
             {
                 context.Stop();
                 UpdateProgressStatus(jobName, BackupStatus.Stopped);
+                var info = RunningJobsProgress.FirstOrDefault(p => p.JobName == jobName);
+                if (info != null) RunningJobsProgress.Remove(info);
                 StatusMessage = _languageManager.GetText("job_stopped");
             }
         }
@@ -437,7 +439,13 @@ namespace EasySave.Core.ViewModels
 
         public void StopAllJobs()
         {
-            foreach (var kvp in _runningJobs) { kvp.Value.Stop(); UpdateProgressStatus(kvp.Key, BackupStatus.Stopped); }
+            foreach (var kvp in _runningJobs)
+            {
+                kvp.Value.Stop();
+                UpdateProgressStatus(kvp.Key, BackupStatus.Stopped);
+                var info = RunningJobsProgress.FirstOrDefault(p => p.JobName == kvp.Key);
+                if (info != null) RunningJobsProgress.Remove(info);
+            }
             StatusMessage = _languageManager.GetText("all_jobs_stopped");
         }
 
