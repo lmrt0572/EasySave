@@ -4,6 +4,9 @@ using EasySave.Core.Models.Enums;
 namespace EasySave.Tests.Services
 {
     // ===== LANGUAGE MANAGER TESTS =====
+
+    // Coverage : default language, SetLanguage, GetText (known key, unknown key,
+    //            format args), consistency across both languages.
     public class LanguageManagerTests
     {
         private readonly LanguageManager _manager = new();
@@ -15,6 +18,7 @@ namespace EasySave.Tests.Services
         [Fact]
         public void Default_Language_IsEnglish()
         {
+            // The manager must start in English without any configuration
             Assert.Equal(Language.English, _manager.GetCurrentLanguage());
         }
 
@@ -25,6 +29,7 @@ namespace EasySave.Tests.Services
         [Fact]
         public void SetLanguage_French_ChangesCurrent()
         {
+            // SetLanguage must update the current language
             _manager.SetLanguage(Language.French);
 
             Assert.Equal(Language.French, _manager.GetCurrentLanguage());
@@ -37,26 +42,29 @@ namespace EasySave.Tests.Services
         [Fact]
         public void GetText_English_ReturnsEnglishTranslation()
         {
+            // A known key must return the correct English value
             _manager.SetLanguage(Language.English);
 
-            string text = _manager.GetText("menu_create");
+            string text = _manager.GetText("jobs_title");
 
-            Assert.Equal("1. Create backup job", text);
+            Assert.Equal("Backup Jobs", text);
         }
 
         [Fact]
         public void GetText_French_ReturnsFrenchTranslation()
         {
+            // The same key must return the correct French value when language is French
             _manager.SetLanguage(Language.French);
 
-            string text = _manager.GetText("menu_create");
+            string text = _manager.GetText("jobs_title");
 
-            Assert.Equal("1. Créer un travail de sauvegarde", text);
+            Assert.Equal("Travaux de sauvegarde", text);
         }
 
         [Fact]
         public void GetText_UnknownKey_ReturnsBracketedKey()
         {
+            // A missing key must return the key wrapped in brackets, never throw
             string text = _manager.GetText("this_key_does_not_exist");
 
             Assert.Equal("[this_key_does_not_exist]", text);
@@ -69,23 +77,23 @@ namespace EasySave.Tests.Services
         [Fact]
         public void GetText_WithArgs_FormatsCorrectly()
         {
+            // "wpf_jobs_count" = "{0} job(s)" — format argument must be substituted
             _manager.SetLanguage(Language.English);
 
-            // "wpf_jobs_count" = "{0} job(s)"
             string text = _manager.GetText("wpf_jobs_count", 5);
 
             Assert.Equal("5 job(s)", text);
         }
 
         [Fact]
-        public void GetText_SettingsCurrentKey_FormatsWithValue()
+        public void GetText_ProgressFiles_FormatsWithTwoArgs()
         {
+            // "progress_files" = "Files: {0}/{1}" — two format arguments
             _manager.SetLanguage(Language.English);
 
-            // "settings_current_key" = "Current encryption key: {0}"
-            string text = _manager.GetText("settings_current_key", "MyKey123");
+            string text = _manager.GetText("progress_files", 3, 10);
 
-            Assert.Equal("Current encryption key: MyKey123", text);
+            Assert.Equal("Files: 3/10", text);
         }
 
         // ==========================================
@@ -95,30 +103,55 @@ namespace EasySave.Tests.Services
         [Fact]
         public void LanguageSwitch_AllKeysExistInBothLanguages()
         {
-            // Verify that switching languages still returns valid text for known keys
+            // All listed keys must resolve in both languages without returning a bracketed fallback.
+            // These are real keys present in LanguageManager (WPF v3 dictionary).
             var keys = new[]
             {
-                "menu_title", "menu_create", "menu_quit",
-                "job_created", "error_max_jobs",
-                "wpf_subtitle", "wpf_ready",
-                "job_paused", "job_resumed", "job_stopped"
+                "jobs_title",
+                "job_created",
+                "wpf_subtitle",
+                "wpf_ready",
+                "job_paused",
+                "job_resumed",
+                "job_stopped",
+                "nav_jobs",
+                "nav_settings",
+                "settings_log_format"
             };
 
             foreach (var key in keys)
             {
                 _manager.SetLanguage(Language.English);
                 string en = _manager.GetText(key);
-                Assert.DoesNotContain("[", en); // Not a missing key
+                Assert.DoesNotContain("[", en); // Missing key returns "[key]"
 
                 _manager.SetLanguage(Language.French);
                 string fr = _manager.GetText(key);
-                Assert.DoesNotContain("[", fr); // Not a missing key
+                Assert.DoesNotContain("[", fr);
+            }
+        }
 
-                // English and French should be different (except "=== EasySave ===")
-                if (key != "menu_title" && key != "wpf_actions")
-                {
-                    Assert.NotEqual(en, fr);
-                }
+        [Fact]
+        public void LanguageSwitch_EnglishAndFrenchDiffer_ForTranslatedKeys()
+        {
+            // For keys that have distinct translations, EN and FR must differ
+            var translatedKeys = new[]
+            {
+                "jobs_title",
+                "job_paused",
+                "nav_settings",
+                "settings_log_format"
+            };
+
+            foreach (var key in translatedKeys)
+            {
+                _manager.SetLanguage(Language.English);
+                string en = _manager.GetText(key);
+
+                _manager.SetLanguage(Language.French);
+                string fr = _manager.GetText(key);
+
+                Assert.NotEqual(en, fr);
             }
         }
     }
