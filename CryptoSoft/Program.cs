@@ -12,6 +12,11 @@ public static class Program
         if (!createdNew)
         {
 
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("Criticial Error: CryptoSoft is already running.");
+            Console.WriteLine("Single-instance policy enforced via Mutex.");
+            Console.ResetColor();
+
             Environment.Exit(-2);
             return;
         }
