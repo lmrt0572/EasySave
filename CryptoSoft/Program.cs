@@ -2,23 +2,49 @@
 
 public static class Program
 {
+    private static Mutex? _mutex;
     public static void Main(string[] args)
     {
+        const string mutexName = @"Global\CryptoSoft_ProSoft_V3";
+
+        _mutex = new Mutex(true, mutexName, out bool createdNew);
+
+        if (!createdNew)
+        {
+
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("Criticial Error: CryptoSoft is already running.");
+            Console.WriteLine("Single-instance policy enforced via Mutex.");
+            Console.ResetColor();
+
+            Environment.Exit(-2);
+            return;
+        }
+
         try
         {
-            foreach (var arg in args)
+            if (args.Length < 2)
             {
-                Console.WriteLine(arg);
+                Environment.Exit(-1);
+                return;
             }
 
             var fileManager = new FileManager(args[0], args[1]);
-            int ElapsedTime = fileManager.TransformFile();
-            Environment.Exit(ElapsedTime);
+            int elapsedTime = fileManager.TransformFile();
+
+            Environment.Exit(elapsedTime);
         }
-        catch (Exception e)
+        catch (Exception)
         {
-            Console.WriteLine(e.Message);
             Environment.Exit(-99);
+        }
+        finally
+        {
+            if (_mutex != null)
+            {
+                _mutex.ReleaseMutex();
+                _mutex.Dispose();
+            }
         }
     }
 }

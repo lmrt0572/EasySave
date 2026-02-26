@@ -26,7 +26,7 @@ namespace EasySave.Core.Models
         public BackupJobState()
         {
             Timestamp = DateTime.Now;
-            Status = BackupStatus.Inactive;
+            Status = BackupStatus.Paused;
         }
 
         public BackupJobState(string jobName) : this()
@@ -45,7 +45,7 @@ namespace EasySave.Core.Models
         }
         public void StartBackup(long totalFiles, long totalSize)
         {
-            Status = BackupStatus.Active;
+            Status = BackupStatus.Running;
             TotalFilesToCopy = (int)totalFiles;
             TotalFilesSize = totalSize;
             RemainingFiles = (int)totalFiles;

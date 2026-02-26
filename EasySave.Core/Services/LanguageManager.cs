@@ -3,31 +3,15 @@ using System.Collections.Generic;
 
 namespace EasySave.Core.Models.Enums
 {
-    // ===== LANGUAGE MANAGER =====
     public class LanguageManager
     {
-        // ===== PRIVATE MEMBERS =====
         private Language _currentLanguage = Language.English;
         private readonly Dictionary<string, Dictionary<Language, string>> _translations;
 
-        // ===== CONSTRUCTOR =====
         public LanguageManager()
         {
-            // ===== TRANSLATIONS DATA =====
             _translations = new Dictionary<string, Dictionary<Language, string>>
             {
-                // ===== CONSOLE MENU =====
-                ["menu_title"] = new() { [Language.English] = "=== EasySave ===", [Language.French] = "=== EasySave ===" },
-                ["menu_create"] = new() { [Language.English] = "1. Create backup job", [Language.French] = "1. Créer un travail de sauvegarde" },
-                ["menu_list"] = new() { [Language.English] = "2. List backup jobs", [Language.French] = "2. Lister les travaux" },
-                ["menu_execute"] = new() { [Language.English] = "3. Execute backup job", [Language.French] = "3. Exécuter une sauvegarde" },
-                ["menu_delete"] = new() { [Language.English] = "4. Delete backup job", [Language.French] = "4. Supprimer un travail" },
-                ["menu_settings"] = new() { [Language.English] = "5. Settings", [Language.French] = "5. Paramètres" },
-                ["menu_language"] = new() { [Language.English] = "6. Change language", [Language.French] = "6. Changer la langue" },
-                ["menu_log_format"] = new() { [Language.English] = "7. Change log format", [Language.French] = "7. Changer le format des logs" },
-                ["menu_quit"] = new() { [Language.English] = "8. Quit", [Language.French] = "8. Quitter" },
-                ["menu_choice"] = new() { [Language.English] = "Your choice: ", [Language.French] = "Votre choix : " },
-
                 // ===== CONFIRMATION MESSAGES =====
                 ["job_created"] = new() { [Language.English] = "Backup job created successfully", [Language.French] = "Travail de sauvegarde créé avec succès" },
                 ["job_deleted"] = new() { [Language.English] = "Backup job deleted", [Language.French] = "Travail supprimé" },
@@ -35,32 +19,12 @@ namespace EasySave.Core.Models.Enums
                 ["language_changed"] = new() { [Language.English] = "Language changed", [Language.French] = "Langue changée" },
 
                 // ===== ERROR MESSAGES =====
-                ["error_max_jobs"] = new() { [Language.English] = "Error: Maximum 5 jobs allowed", [Language.French] = "Erreur : Maximum 5 travaux autorisés" },
                 ["error_job_not_found"] = new() { [Language.English] = "Error: Job not found", [Language.French] = "Erreur : Travail non trouvé" },
                 ["error_invalid_choice"] = new() { [Language.English] = "Error: Invalid choice", [Language.French] = "Erreur : Choix invalide" },
                 ["error_invalid_path"] = new() { [Language.English] = "Error: Invalid path", [Language.French] = "Erreur : Chemin invalide" },
                 ["error_execution"] = new() { [Language.English] = "Error during execution", [Language.French] = "Erreur lors de l'exécution" },
                 ["error_name_exists"] = new() { [Language.English] = "Error: Name already exists", [Language.French] = "Erreur : Ce nom existe déjà" },
                 ["error_generic"] = new() { [Language.English] = "An unexpected error occurred", [Language.French] = "Une erreur inattendue est survenue" },
-                ["not_implemented"] = new() { [Language.English] = "Feature not implemented yet", [Language.French] = "Fonctionnalité non implémentée" },
-
-                // ===== CONSOLE PROMPTS =====
-                ["prompt_name"] = new() { [Language.English] = "Job name: ", [Language.French] = "Nom du travail : " },
-                ["prompt_source"] = new() { [Language.English] = "Source directory: ", [Language.French] = "Répertoire source : " },
-                ["prompt_target"] = new() { [Language.English] = "Target directory: ", [Language.French] = "Répertoire cible : " },
-                ["prompt_type"] = new() { [Language.English] = "Type (1=Full, 2=Differential): ", [Language.French] = "Type (1=Complète, 2=Différentielle) : " },
-                ["prompt_job_index"] = new() { [Language.English] = "Job number: ", [Language.French] = "Numéro du travail : " },
-                ["prompt_log_format"] = new() { [Language.English] = "Choose format (1=JSON, 2=XML): ", [Language.French] = "Choisir le format (1=JSON, 2=XML) : " },
-
-                // ── Settings (Console) ──
-                ["settings_title"] = new() { [Language.English] = "=== Settings ===", [Language.French] = "=== Paramètres ===" },
-                ["settings_current_key"] = new() { [Language.English] = "Current encryption key: {0}", [Language.French] = "Clé de chiffrement actuelle : {0}" },
-                ["settings_prompt_key"] = new() { [Language.English] = "New key (Enter to keep): ", [Language.French] = "Nouvelle clé (Entrée pour garder) : " },
-                ["settings_current_extensions"] = new() { [Language.English] = "Current extensions: {0}", [Language.French] = "Extensions actuelles : {0}" },
-                ["settings_prompt_extensions"] = new() { [Language.English] = "New extensions (comma-separated, Enter to keep): ", [Language.French] = "Nouvelles extensions (séparées par virgules, Entrée pour garder) : " },
-                ["settings_current_software"] = new() { [Language.English] = "Current business software: {0}", [Language.French] = "Logiciel métier actuel : {0}" },
-                ["settings_prompt_software"] = new() { [Language.English] = "New software name (Enter to keep): ", [Language.French] = "Nouveau nom de logiciel (Entrée pour garder) : " },
-                ["settings_success"] = new() { [Language.English] = "Settings updated successfully", [Language.French] = "Paramètres mis à jour avec succès" },
 
                 // ===== STATUS =====
                 ["status_active"] = new() { [Language.English] = "Active", [Language.French] = "Actif" },
@@ -77,24 +41,7 @@ namespace EasySave.Core.Models.Enums
                 ["type_full"] = new() { [Language.English] = "Full", [Language.French] = "Complète" },
                 ["type_differential"] = new() { [Language.English] = "Differential", [Language.French] = "Différentielle" },
 
-                // ===== CONSOLE JOB DETAILS =====
-                ["job_details_header"] = new() { [Language.English] = "Backup job details", [Language.French] = "Détails du travail de sauvegarde" },
-                ["job_name"] = new() { [Language.English] = "Name: ", [Language.French] = "Nom : " },
-                ["job_source"] = new() { [Language.English] = "Source: ", [Language.French] = "Source : " },
-                ["job_target"] = new() { [Language.English] = "Target: ", [Language.French] = "Cible : " },
-                ["job_type"] = new() { [Language.English] = "Type: ", [Language.French] = "Type : " },
-
-                // ── Log format (dev) ──
-                ["log_format_changed"] = new() { [Language.English] = "Log format changed to {0}", [Language.French] = "Format de log changé en {0}" },
-
-                // ── Misc ──
-                ["press_any_key"] = new() { [Language.English] = "Press any key to continue...", [Language.French] = "Appuyez sur une touche pour continuer..." },
-
-                // ══════════════════════════════════════════════
-                // ══  WPF V2.0 — GUI-specific translations   ══
-                // ══════════════════════════════════════════════
-
-                // ── Header ──
+                // ===== WPF HEADER =====
                 ["wpf_subtitle"] = new() { [Language.English] = "Backup management", [Language.French] = "Gestion des sauvegardes" },
                 ["wpf_actions"] = new() { [Language.English] = "ACTIONS", [Language.French] = "ACTIONS" },
                 ["wpf_execute_all"] = new() { [Language.English] = "▶  Execute All", [Language.French] = "▶  Tout exécuter" },
@@ -111,7 +58,6 @@ namespace EasySave.Core.Models.Enums
                 ["wpf_monitor_not_detected"] = new() { [Language.English] = "Not detected", [Language.French] = "Non détecté" },
                 ["error_business_software"] = new() { [Language.English] = "Business software detected — backups blocked", [Language.French] = "Logiciel métier détecté — sauvegardes bloquées" },
                 ["business_software_cleared"] = new() { [Language.English] = "Business software closed — ready", [Language.French] = "Logiciel métier fermé — prêt" },
-                ["job_stopped_business_software"] = new() { [Language.English] = "Backup stopped: business software detected", [Language.French] = "Sauvegarde arrêtée : logiciel métier détecté" },
 
                 // ===== WPF CREATE FORM =====
                 ["wpf_new_job"] = new() { [Language.English] = "New backup job", [Language.French] = "Nouveau travail de sauvegarde" },
@@ -159,6 +105,7 @@ namespace EasySave.Core.Models.Enums
                 ["settings_tab_general"] = new() { [Language.English] = "General", [Language.French] = "Général" },
                 ["settings_tab_logs"] = new() { [Language.English] = "Logs", [Language.French] = "Journaux" },
                 ["settings_tab_language"] = new() { [Language.English] = "Language", [Language.French] = "Langue" },
+                ["settings_tab_theme"] = new() { [Language.English] = "Theme", [Language.French] = "Thème" },
 
                 // ===== SETTINGS GENERAL =====
                 ["settings_business_software"] = new() { [Language.English] = "Business Software Detection", [Language.French] = "Détection logiciel métier" },
@@ -166,17 +113,22 @@ namespace EasySave.Core.Models.Enums
                 ["settings_encryption"] = new() { [Language.English] = "Encryption", [Language.French] = "Chiffrement" },
                 ["settings_encryption_key"] = new() { [Language.English] = "Encryption Key", [Language.French] = "Clé de chiffrement" },
                 ["settings_encryption_ext"] = new() { [Language.English] = "Target Extensions", [Language.French] = "Extensions cibles" },
+                ["settings_large_file"] = new() { [Language.English] = "Large File Threshold (Ko)", [Language.French] = "Seuil fichier volumineux (Ko)" },
+                ["settings_large_file_desc"] = new() { [Language.English] = "Only one file above this size transfers at a time (0 = disabled)", [Language.French] = "Un seul fichier au-dessus de ce seuil à la fois (0 = désactivé)" },
+                ["settings_priority_ext"] = new() { [Language.English] = "Priority extensions", [Language.French] = "Extensions prioritaires" },
+                ["settings_priority_ext_desc"] = new() { [Language.English] = "Comma-separated; these files are saved before others across all jobs (empty = no priority)", [Language.French] = "Séparées par des virgules ; ces fichiers sont sauvegardés avant les autres pour tous les travaux (vide = pas de priorité)" },
 
                 // ===== SETTINGS LOGS =====
                 ["settings_log_format"] = new() { [Language.English] = "Log Format", [Language.French] = "Format des journaux" },
                 ["settings_log_desc"] = new() { [Language.English] = "Choose output format for backup logs", [Language.French] = "Choisissez le format de sortie des journaux" },
+                ["settings_log_mode_title"] = new() { [Language.English] = "Transmission Mode", [Language.French] = "Mode de transmission" },
+                ["settings_log_mode_desc"] = new() { [Language.English] = "Choose where logs are stored", [Language.French] = "Choisissez où les logs sont stockés" },
 
                 // ===== SETTINGS LANGUAGE =====
                 ["settings_language_title"] = new() { [Language.English] = "Application Language", [Language.French] = "Langue de l'application" },
                 ["settings_language_desc"] = new() { [Language.English] = "Select your preferred language", [Language.French] = "Sélectionnez la langue de l'application" },
 
                 // ===== SETTINGS THEME =====
-                ["settings_tab_theme"] = new() { [Language.English] = "Theme", [Language.French] = "Thème" },
                 ["settings_theme_title"] = new() { [Language.English] = "Color Theme", [Language.French] = "Thème de couleurs" },
                 ["settings_theme_desc"] = new() { [Language.English] = "Select your preferred color palette", [Language.French] = "Sélectionnez votre palette de couleurs préférée" },
 
@@ -189,25 +141,48 @@ namespace EasySave.Core.Models.Enums
                 ["notif_settings_saved"] = new() { [Language.English] = "Settings saved", [Language.French] = "Paramètres enregistrés" },
                 ["notif_language_changed"] = new() { [Language.English] = "Language changed to English", [Language.French] = "Langue changée en Français" },
                 ["notif_fields_required"] = new() { [Language.English] = "Please fill all required fields", [Language.French] = "Veuillez remplir tous les champs requis" },
+
+                // ===== PAUSE / RESUME / STOP =====
+                ["job_paused"] = new() { [Language.English] = "Job paused", [Language.French] = "Travail mis en pause" },
+                ["job_resumed"] = new() { [Language.English] = "Job resumed", [Language.French] = "Travail repris" },
+                ["job_stopped"] = new() { [Language.English] = "Job stopped", [Language.French] = "Travail arrêté" },
+                ["all_jobs_paused"] = new() { [Language.English] = "All jobs paused", [Language.French] = "Tous les travaux en pause" },
+                ["all_jobs_resumed"] = new() { [Language.English] = "All jobs resumed", [Language.French] = "Tous les travaux repris" },
+                ["all_jobs_stopped"] = new() { [Language.English] = "All jobs stopped", [Language.French] = "Tous les travaux arrêtés" },
+
+                // ===== BUSINESS SOFTWARE V3 =====
+                ["jobs_paused_business_software"] = new() { [Language.English] = "All jobs paused — business software detected", [Language.French] = "Tous les travaux en pause — logiciel métier détecté" },
+                ["jobs_resumed_business_software"] = new() { [Language.English] = "Jobs resumed — business software closed", [Language.French] = "Travaux repris — logiciel métier fermé" },
+
+                // ===== PROGRESS UI =====
+                ["progress_running"] = new() { [Language.English] = "Running", [Language.French] = "En cours" },
+                ["progress_paused"] = new() { [Language.English] = "Paused", [Language.French] = "En pause" },
+                ["progress_stopped"] = new() { [Language.English] = "Stopped", [Language.French] = "Arrêté" },
+                ["progress_completed"] = new() { [Language.English] = "Completed", [Language.French] = "Terminé" },
+
+                // ===== GLOBAL CONTROLS =====
+                ["wpf_pause_all"] = new() { [Language.English] = "⏸  Pause All", [Language.French] = "⏸  Tout mettre en pause" },
+                ["wpf_resume_all"] = new() { [Language.English] = "▶  Resume All", [Language.French] = "▶  Tout reprendre" },
+                ["wpf_stop_all"] = new() { [Language.English] = "⏹  Stop All", [Language.French] = "⏹  Tout arrêter" },
+
+                // ===== LOG MODES =====
+                ["log_mode_local"] = new() { [Language.English] = "Local", [Language.French] = "Local" },
+                ["log_mode_centralized"] = new() { [Language.English] = "Centralized", [Language.French] = "Centralisé" },
+                ["log_mode_both"] = new() { [Language.English] = "Local + Centralized", [Language.French] = "Local + Centralisé" },
             };
         }
 
-        // ===== LANGUAGE API =====
         public void SetLanguage(Language lang) => _currentLanguage = lang;
         public Language GetCurrentLanguage() => _currentLanguage;
 
-        // ===== TRANSLATION =====
         public string GetText(string key)
         {
-            if (_translations.TryGetValue(key, out var langDict))
-                if (langDict.TryGetValue(_currentLanguage, out var text))
-                    return text;
+            if (_translations.TryGetValue(key, out var langDict) &&
+                langDict.TryGetValue(_currentLanguage, out var text))
+                return text;
             return $"[{key}]";
         }
 
-        public string GetText(string key, params object[] args)
-        {
-            return string.Format(GetText(key), args);
-        }
+        public string GetText(string key, params object[] args) => string.Format(GetText(key), args);
     }
 }

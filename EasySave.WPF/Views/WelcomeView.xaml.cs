@@ -12,6 +12,7 @@ namespace EasySave.WPF.Views
         }
 
         // ===== LAUNCH =====
+        // Opens the main window and closes the welcome screen.
         private void BtnLaunch_Click(object sender, RoutedEventArgs e)
         {
             var mainView = new MainView();

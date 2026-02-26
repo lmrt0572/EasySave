@@ -7,14 +7,14 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Thumb">
-                    <Border x:Name="rectangle" Background="#a67847" CornerRadius="4" 
-                            Margin="2,0" Opacity="0.5" />
+                    <Border x:Name="rectangle" Background="{DynamicResource AccentPrimary}" CornerRadius="4" 
+                            Margin="2,0" Opacity="0.6" />
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="true">
                             <Setter TargetName="rectangle" Property="Opacity" Value="1"/>
                         </Trigger>
                         <Trigger Property="IsDragging" Value="true">
-                            <Setter TargetName="rectangle" Property="Background" Value="#553f2a"/>
+                            <Setter TargetName="rectangle" Property="Background" Value="{DynamicResource TextPrimary}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -153,4 +153,7 @@
             </Setter.Value>
         </Setter>
     </Style>
+    
+    
 </ResourceDictionary>
+    

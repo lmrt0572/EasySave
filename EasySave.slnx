@@ -1,8 +1,12 @@
 <Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="docker-compose.yml" />
+  </Folder>
   <Project Path="CryptoSoft/CryptoSoft.csproj" Id="dcd1171f-b9db-4b2d-b784-d0ab0119f05d" />
   <Project Path="EasyLog/EasyLog.csproj" />
-  <Project Path="EasySave.Console/EasySave.Console.csproj" Id="282111b4-331a-42da-9207-31456aabdf6e" />
   <Project Path="EasySave.Core/EasySave.Core.csproj" Id="580b2c16-1541-42ab-b61f-bdaeda23bf4f" />
+  <Project Path="EasySave.LogServer/EasySave.LogServer.csproj" Id="df1ffd6c-37dc-4dc2-b3ea-6812f1115f4a" />
+  <Project Path="EasySave.Tests/EasySave.Tests.csproj" Id="cd70318c-7634-4910-b2a7-a02135cef67b" />
   <Project Path="EasySave.WPF/EasySave.WPF.csproj" Id="67032c9b-eea4-41c6-8057-314546bf1d35">
     <BuildDependency Project="CryptoSoft/CryptoSoft.csproj" />
   </Project>

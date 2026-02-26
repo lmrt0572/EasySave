@@ -7,6 +7,7 @@
     <SolidColorBrush x:Key="BgPrimary" Color="#DFC4A8"/>
     <SolidColorBrush x:Key="BgSidebar" Color="#3E2415"/>
     <SolidColorBrush x:Key="BgCard" Color="#E8D2BA"/>
+    <SolidColorBrush x:Key="BgCardRunning" Color="#DCC4A8"/>
     <SolidColorBrush x:Key="BgInput" Color="#D6BA9E"/>
     <SolidColorBrush x:Key="BgSidebarHover" Color="#5A3824"/>
     <SolidColorBrush x:Key="BgSidebarActive" Color="#B5651D"/>

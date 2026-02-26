@@ -1,29 +1,31 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading;
 using EasySave.Core.Models;
 
 namespace EasySave.Core.Services
 {
-    // ===== STATE SERVICE =====
     public class StateService : IStateService
     {
         private const string TimestampFormat = "yyyy-MM-dd HH:mm:ss";
+        private const int DebounceMs = 300;
 
         // ===== PRIVATE MEMBERS =====
         private readonly string _stateFilePath;
-        private readonly object _lockObject = new object();
-        private static readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
+        private readonly ConcurrentDictionary<string, BackupJobState> _states = new();
+        private readonly object _writeLock = new object();
+        private readonly Timer? _debounceTimer;
+        private volatile int _writePending;
+        private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions
         {
             WriteIndented = true,
-            Converters =
-    {
-        new JsonStringEnumConverter(), 
-        new StateDateTimeConverter()
-    }
+            Converters = { new JsonStringEnumConverter(), new StateDateTimeConverter() }
         };
 
         private sealed class StateDateTimeConverter : JsonConverter<DateTime>
@@ -57,61 +59,92 @@ namespace EasySave.Core.Services
             }
 
             _stateFilePath = Path.Combine(stateDirectory, "state.json");
+            LoadFromDisk();
+
+            _debounceTimer = new Timer(_ => FlushDebounced(), null, Timeout.Infinite, Timeout.Infinite);
         }
 
-        // ===== UPDATE STATE =====
+        // ===== IStateService =====
 
         public void UpdateJobState(BackupJobState state)
         {
-            if (state == null)
-                throw new ArgumentNullException(nameof(state));
+            ArgumentNullException.ThrowIfNull(state);
 
-            lock (_lockObject)
+            BackupJobState snapshot = CloneState(state);
+            _states[state.JobName] = snapshot;
+            ScheduleDebouncedWrite();
+        }
+
+        public void Flush()
+        {
+            Interlocked.Exchange(ref _writePending, 0);
+            _debounceTimer?.Change(Timeout.Infinite, Timeout.Infinite);
+            WriteToDisk();
+        }
+
+        // ===== DEBOUNCED WRITE =====
+
+        private void ScheduleDebouncedWrite()
+        {
+            Interlocked.Exchange(ref _writePending, 1);
+            _debounceTimer?.Change(DebounceMs, Timeout.Infinite);
+        }
+
+        private void FlushDebounced()
+        {
+            if (Interlocked.CompareExchange(ref _writePending, 0, 1) != 1)
+                return;
+            WriteToDisk();
+        }
+
+        private void WriteToDisk()
+        {
+            lock (_writeLock)
             {
-                List<BackupJobState> allStates = ReadAllStates();
-                int existingIndex = allStates.FindIndex(s => s.JobName == state.JobName);
-                if (existingIndex >= 0)
-                {
-                    allStates[existingIndex] = state;
-                }
-                else
-                {
-                    allStates.Add(state);
-                }
-                WriteAllStates(allStates);
+                var snapshot = _states.Values.ToList();
+                if (snapshot.Count == 0)
+                    return;
+
+                string json = JsonSerializer.Serialize(snapshot, JsonOptions);
+                File.WriteAllText(_stateFilePath, json);
             }
         }
 
-        // ===== PRIVATE HELPERS =====
+        // ===== DISK LOAD =====
 
-        private List<BackupJobState> ReadAllStates()
+        private void LoadFromDisk()
         {
             if (!File.Exists(_stateFilePath))
-            {
-                return new List<BackupJobState>();
-            }
+                return;
 
             try
             {
                 string json = File.ReadAllText(_stateFilePath);
                 if (string.IsNullOrWhiteSpace(json))
-                {
-                    return new List<BackupJobState>();
-                }
+                    return;
 
-                var states = JsonSerializer.Deserialize<List<BackupJobState>>(json, _jsonOptions);
-                return states ?? new List<BackupJobState>();
+                var states = JsonSerializer.Deserialize<List<BackupJobState>>(json, JsonOptions);
+                if (states == null)
+                    return;
+
+                foreach (var s in states)
+                {
+                    if (!string.IsNullOrEmpty(s?.JobName))
+                        _states[s.JobName] = s;
+                }
             }
             catch (JsonException)
             {
-                return new List<BackupJobState>();
+                // Corrupt or incompatible file; start fresh
             }
         }
 
-        private void WriteAllStates(List<BackupJobState> states)
+        // ===== HELPERS =====
+
+        private static BackupJobState CloneState(BackupJobState source)
         {
-            string json = JsonSerializer.Serialize(states, _jsonOptions);
-            File.WriteAllText(_stateFilePath, json);
+            var json = JsonSerializer.Serialize(source, JsonOptions);
+            return JsonSerializer.Deserialize<BackupJobState>(json, JsonOptions) ?? new BackupJobState(source.JobName);
         }
     }
 }

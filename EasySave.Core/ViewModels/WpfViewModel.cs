@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -26,17 +27,13 @@ namespace EasySave.Core.ViewModels
         private readonly LanguageManager _languageManager;
         private readonly IStateService _stateService;
         private readonly BusinessSoftwareMonitor _monitor;
-        private CancellationTokenSource? _currentCts;
-        private int _executionId;
         private IEncryptionService _encryptionService = null!;
+
+        private readonly ConcurrentDictionary<string, JobExecutionContext> _runningJobs = new();
 
         private bool _isBusinessSoftwareDetected;
         private bool _isExecuting;
         private string _statusMessage = string.Empty;
-        private string _currentJobName = string.Empty;
-        private int _progressPercent;
-        private string _progressText = string.Empty;
-        private string _currentFileName = string.Empty;
 
         // ===== NOTIFICATION STATE =====
         private string _notificationMessage = string.Empty;
@@ -44,12 +41,12 @@ namespace EasySave.Core.ViewModels
         private bool _isNotificationVisible;
         private int _notificationCounter;
 
-        // ===== OBSERVABLE COLLECTION =====
+        // ===== OBSERVABLE COLLECTIONS =====
         public ObservableCollection<BackupJob> Jobs { get; }
+        public ObservableCollection<JobProgressInfo> RunningJobsProgress { get; } = new();
         public event PropertyChangedEventHandler? PropertyChanged;
 
         // ===== BINDABLE PROPERTIES =====
-
         public bool IsBusinessSoftwareDetected
         {
             get => _isBusinessSoftwareDetected;
@@ -94,10 +91,26 @@ namespace EasySave.Core.ViewModels
             }
         }
 
-        // ===== ENCRYPTION STATUS (for Dashboard) =====
         public bool IsEncryptionActive => !string.IsNullOrWhiteSpace(_config.EncryptionKey) && _config.EncryptionExtensions.Count > 0;
 
-        // ===== LOG FORMAT =====
+        public string PriorityExtensionsText
+        {
+            get => string.Join(", ", _config.PriorityExtensions);
+            set
+            {
+                _config.PriorityExtensions = value.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(e => e.Trim().ToLowerInvariant()).Where(e => !string.IsNullOrEmpty(e))
+                    .Select(e => e.StartsWith('.') ? e : "." + e).Distinct().ToList();
+                SaveConfig(); OnPropertyChanged();
+            }
+        }
+
+        public int LargeFileThresholdKo
+        {
+            get => _config.LargeFileThresholdKo;
+            set { _config.LargeFileThresholdKo = Math.Max(0, value); SaveConfig(); OnPropertyChanged(); }
+        }
+
         public string LogFormat
         {
             get => _config.LogFormat == EasyLog.Models.LogFormat.Xml ? "xml" : "json";
@@ -111,11 +124,32 @@ namespace EasySave.Core.ViewModels
             }
         }
 
-        // ===== PROGRESS =====
-        public string CurrentJobName { get => _currentJobName; private set { _currentJobName = value; OnPropertyChanged(); } }
-        public int ProgressPercent { get => _progressPercent; private set { _progressPercent = value; OnPropertyChanged(); } }
-        public string ProgressText { get => _progressText; private set { _progressText = value; OnPropertyChanged(); } }
-        public string CurrentFileName { get => _currentFileName; private set { _currentFileName = value; OnPropertyChanged(); } }
+        public string LogMode
+        {
+            get => _config.LogMode.ToString();
+            set
+            {
+                if (Enum.TryParse<EasyLog.Models.LogMode>(value, out var mode))
+                {
+                    if (_config.LogMode == mode) return;
+                    _config.LogMode = mode;
+                    LogService.Instance.SetLogMode(mode);
+                    SaveConfig(); OnPropertyChanged();
+                }
+            }
+        }
+
+        public string DockerUrl
+        {
+            get => _config.DockerUrl;
+            set
+            {
+                if (_config.DockerUrl == value) return;
+                _config.DockerUrl = value;
+                LogService.Instance.UpdateDockerUrl(value);
+                SaveConfig(); OnPropertyChanged();
+            }
+        }
 
         // ===== NOTIFICATION =====
         public string NotificationMessage { get => _notificationMessage; private set { _notificationMessage = value; OnPropertyChanged(); } }
@@ -130,8 +164,7 @@ namespace EasySave.Core.ViewModels
             _config = new AppConfig();
             Jobs = new ObservableCollection<BackupJob>();
 
-            string appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            string configDir = Path.Combine(appDataPath, "EasySave");
+            string configDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "EasySave");
             Directory.CreateDirectory(configDir);
             _configPath = Path.Combine(configDir, "config.json");
 
@@ -191,29 +224,29 @@ namespace EasySave.Core.ViewModels
         public async Task ExecuteJob(BackupJob job)
         {
             if (job == null) return;
-            if (_monitor.CheckNow())
-            {
-                IsBusinessSoftwareDetected = true;
-                StatusMessage = _languageManager.GetText("error_business_software");
-                ShowNotification(_languageManager.GetText("error_business_software"), "error");
-                return;
-            }
 
-            var myId = ++_executionId;
-            var myCts = new CancellationTokenSource();
-            _currentCts = myCts;
-            IsExecuting = true; ResetProgress();
+            IsExecuting = true;
+
+            var context = new JobExecutionContext(job.Name)
+            {
+                LargeFileThresholdKo = _config.LargeFileThresholdKo,
+                PriorityExtensions = _config.PriorityExtensions
+            };
+            _runningJobs[job.Name] = context;
+
+            var progressInfo = new JobProgressInfo(job.Name);
+            RunningJobsProgress.Add(progressInfo);
 
             try
             {
-                await ExecuteSingleJob(job, myCts.Token);
+                await ExecuteSingleJob(job, context, progressInfo);
                 StatusMessage = _languageManager.GetText("job_executed");
                 ShowNotification(_languageManager.GetText("notif_execution_complete"), "success");
             }
             catch (OperationCanceledException)
             {
-                StatusMessage = _languageManager.GetText("job_stopped_business_software");
-                ShowNotification(_languageManager.GetText("job_stopped_business_software"), "warning");
+                StatusMessage = _languageManager.GetText("job_stopped");
+                ShowNotification(_languageManager.GetText("job_stopped"), "warning");
             }
             catch (Exception ex)
             {
@@ -222,50 +255,56 @@ namespace EasySave.Core.ViewModels
             }
             finally
             {
-                if (_executionId == myId) IsExecuting = false;
-                myCts.Dispose();
-                if (_currentCts == myCts) _currentCts = null;
+                _runningJobs.TryRemove(job.Name, out _);
+                context.Dispose();
+                if (_runningJobs.IsEmpty) IsExecuting = false;
+                _ = RemoveProgressInfoDelayed(progressInfo);
             }
         }
 
         public async Task ExecuteAllJobs()
         {
             if (_config.Jobs.Count == 0) return;
-            if (_monitor.CheckNow())
-            {
-                IsBusinessSoftwareDetected = true;
-                StatusMessage = _languageManager.GetText("error_business_software");
-                ShowNotification(_languageManager.GetText("error_business_software"), "error");
-                return;
-            }
 
-            var myId = ++_executionId;
-            var myCts = new CancellationTokenSource();
-            _currentCts = myCts;
-            IsExecuting = true; ResetProgress();
+            IsExecuting = true;
+
+            var jobsList = _config.Jobs.ToList();
+            var taskList = new List<Task>();
+            int stoppedCount = 0;
+
+            foreach (var job in jobsList)
+            {
+                var context = new JobExecutionContext(job.Name)
+                {
+                    LargeFileThresholdKo = _config.LargeFileThresholdKo,
+                    PriorityExtensions = _config.PriorityExtensions
+                };
+                _runningJobs[job.Name] = context;
+
+                var progressInfo = new JobProgressInfo(job.Name);
+                RunningJobsProgress.Add(progressInfo);
+
+                taskList.Add(Task.Run(async () =>
+                    await RunJobWithCleanupAsync(job, context, progressInfo, () => Interlocked.Increment(ref stoppedCount))));
+            }
 
             try
             {
-                foreach (var job in _config.Jobs.ToList())
+                await Task.WhenAll(taskList);
+
+                if (_runningJobs.IsEmpty)
                 {
-                    if (_monitor.CheckNow())
+                    if (stoppedCount > 0)
                     {
-                        StatusMessage = _languageManager.GetText("error_business_software");
-                        ShowNotification(_languageManager.GetText("error_business_software"), "warning");
-                        break;
+                        StatusMessage = _languageManager.GetText("job_stopped");
+                        ShowNotification(_languageManager.GetText("all_jobs_stopped"), "error");
                     }
-                    await ExecuteSingleJob(job, myCts.Token);
+                    else
+                    {
+                        StatusMessage = _languageManager.GetText("job_executed");
+                        ShowNotification(_languageManager.GetText("notif_execution_complete"), "success");
+                    }
                 }
-                if (!myCts.IsCancellationRequested)
-                {
-                    StatusMessage = _languageManager.GetText("job_executed");
-                    ShowNotification(_languageManager.GetText("notif_execution_complete"), "success");
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                StatusMessage = _languageManager.GetText("job_stopped_business_software");
-                ShowNotification(_languageManager.GetText("job_stopped_business_software"), "warning");
             }
             catch (Exception ex)
             {
@@ -274,41 +313,139 @@ namespace EasySave.Core.ViewModels
             }
             finally
             {
-                if (_executionId == myId) IsExecuting = false;
-                myCts.Dispose();
-                if (_currentCts == myCts) _currentCts = null;
+                IsExecuting = _runningJobs.Count > 0;
             }
         }
 
-        private async Task ExecuteSingleJob(BackupJob job, CancellationToken token)
+        private async Task RunJobWithCleanupAsync(BackupJob job, JobExecutionContext context,
+            JobProgressInfo progressInfo, Action? onStopped = null)
         {
-            IBackupStrategy strategy = job.Type == BackupType.Full ? new FullBackupStrategy() : new DifferentialBackupStrategy();
-            var execution = new ServiceBackupExecution(strategy, LogService.Instance, _stateService, _encryptionService);
-
-            CurrentJobName = job.Name;
-            execution.StateUpdated += OnStateUpdated;
-            try { await execution.Execute(job, _config.BusinessSoftwareName, token); }
-            finally { execution.StateUpdated -= OnStateUpdated; }
-        }
-
-        // ===== PROGRESS =====
-        private void OnStateUpdated(BackupJobState state)
-        {
-            ProgressPercent = state.Progression;
-            int done = state.TotalFilesToCopy - state.RemainingFiles;
-            ProgressText = $"{done} / {state.TotalFilesToCopy}";
-            string file = state.CurrentSourceFile ?? string.Empty;
-            if (file.Length > 0) CurrentFileName = Path.GetFileName(file);
-            else if (state.Status == BackupStatus.Completed)
+            try
             {
-                CurrentFileName = string.Empty;
-                ProgressText = $"{state.TotalFilesToCopy} / {state.TotalFilesToCopy}";
-                ProgressPercent = 100;
+                await ExecuteSingleJob(job, context, progressInfo);
+            }
+            catch (OperationCanceledException)
+            {
+                progressInfo.Status = BackupStatus.Stopped;
+                onStopped?.Invoke();
+            }
+            catch (Exception)
+            {
+                progressInfo.Status = BackupStatus.Error;
+            }
+            finally
+            {
+                _runningJobs.TryRemove(job.Name, out _);
+                context.Dispose();
+                _ = RemoveProgressInfoDelayed(progressInfo, immediate: progressInfo.Status == BackupStatus.Stopped);
             }
         }
 
-        private void ResetProgress()
-        { CurrentJobName = string.Empty; ProgressPercent = 0; ProgressText = string.Empty; CurrentFileName = string.Empty; }
+        private async Task ExecuteSingleJob(BackupJob job, JobExecutionContext context, JobProgressInfo progressInfo)
+        {
+            IBackupStrategy strategy = job.Type == BackupType.Full
+                ? new FullBackupStrategy()
+                : new DifferentialBackupStrategy();
+
+            var execution = new ServiceBackupExecution(strategy, LogService.Instance, _stateService, _encryptionService);
+            progressInfo.Status = BackupStatus.Running;
+
+            execution.StateUpdated += (state) =>
+            {
+                progressInfo.Progression = state.Progression;
+                progressInfo.TotalFiles = state.TotalFilesToCopy;
+                progressInfo.RemainingFiles = state.RemainingFiles;
+                progressInfo.CurrentFile = state.CurrentSourceFile != null
+                    ? Path.GetFileName(state.CurrentSourceFile)
+                    : string.Empty;
+                progressInfo.Status = context.IsPaused
+                    ? BackupStatus.Paused
+                    : state.Status == BackupStatus.Completed ? BackupStatus.Completed : BackupStatus.Running;
+            };
+
+            await execution.Execute(job, context);
+        }
+
+        private async Task RemoveProgressInfoDelayed(JobProgressInfo info, bool immediate = false)
+        {
+            if (info.Status != BackupStatus.Stopped && info.Status != BackupStatus.Error)
+                info.Status = BackupStatus.Completed;
+
+            if (!immediate && info.Status != BackupStatus.Stopped)
+                await Task.Delay(1500);
+
+            RunningJobsProgress.Remove(info);
+        }
+
+        // ===== PER-JOB CONTROLS =====
+        public void PauseJob(string jobName)
+        {
+            if (_runningJobs.TryGetValue(jobName, out var context))
+            {
+                context.Pause();
+                UpdateProgressStatus(jobName, BackupStatus.Paused);
+                StatusMessage = _languageManager.GetText("job_paused");
+            }
+        }
+
+        public void ResumeJob(string jobName)
+        {
+            if (_runningJobs.TryGetValue(jobName, out var context))
+            {
+                context.Resume();
+                UpdateProgressStatus(jobName, BackupStatus.Running);
+                StatusMessage = _languageManager.GetText("job_resumed");
+            }
+        }
+
+        public void StopJob(string jobName)
+        {
+            if (_runningJobs.TryGetValue(jobName, out var context))
+            {
+                context.Stop();
+                UpdateProgressStatus(jobName, BackupStatus.Stopped);
+                var info = RunningJobsProgress.FirstOrDefault(p => p.JobName == jobName);
+                if (info != null) RunningJobsProgress.Remove(info);
+                StatusMessage = _languageManager.GetText("job_stopped");
+            }
+        }
+
+        // ===== GLOBAL CONTROLS =====
+        public void PauseAllJobs()
+        {
+            foreach (var kvp in _runningJobs) { kvp.Value.Pause(); UpdateProgressStatus(kvp.Key, BackupStatus.Paused); }
+            StatusMessage = _languageManager.GetText("all_jobs_paused");
+        }
+
+        public void ResumeAllJobs()
+        {
+            foreach (var kvp in _runningJobs) { kvp.Value.Resume(); UpdateProgressStatus(kvp.Key, BackupStatus.Running); }
+            StatusMessage = _languageManager.GetText("all_jobs_resumed");
+        }
+
+        public void StopAllJobs()
+        {
+            foreach (var kvp in _runningJobs)
+            {
+                kvp.Value.Stop();
+                UpdateProgressStatus(kvp.Key, BackupStatus.Stopped);
+                var info = RunningJobsProgress.FirstOrDefault(p => p.JobName == kvp.Key);
+                if (info != null) RunningJobsProgress.Remove(info);
+            }
+            StatusMessage = _languageManager.GetText("all_jobs_stopped");
+        }
+
+        public bool IsJobPaused(string jobName) =>
+            _runningJobs.TryGetValue(jobName, out var ctx) && ctx.IsPaused;
+
+        public bool IsJobRunning(string jobName) =>
+            _runningJobs.ContainsKey(jobName);
+
+        private void UpdateProgressStatus(string jobName, BackupStatus status)
+        {
+            var info = RunningJobsProgress.FirstOrDefault(p => p.JobName == jobName);
+            if (info != null) info.Status = status;
+        }
 
         // ===== ENCRYPTION =====
         private void UpdateEncryptionService()
@@ -326,10 +463,21 @@ namespace EasySave.Core.ViewModels
             if (detected)
             {
                 StatusMessage = _languageManager.GetText("error_business_software");
-                _currentCts?.Cancel();
-                if (_isExecuting) { _executionId++; IsExecuting = false; ResetProgress(); }
+                foreach (var kvp in _runningJobs) { kvp.Value.PauseByMonitor(); UpdateProgressStatus(kvp.Key, BackupStatus.Paused); }
+                if (_runningJobs.Count > 0)
+                    ShowNotification(_languageManager.GetText("jobs_paused_business_software"), "warning");
             }
-            else StatusMessage = _languageManager.GetText("business_software_cleared");
+            else
+            {
+                StatusMessage = _languageManager.GetText("business_software_cleared");
+                foreach (var kvp in _runningJobs)
+                {
+                    kvp.Value.ResumeFromMonitor();
+                    if (!kvp.Value.IsPaused) UpdateProgressStatus(kvp.Key, BackupStatus.Running);
+                }
+                if (_runningJobs.Count > 0)
+                    ShowNotification(_languageManager.GetText("jobs_resumed_business_software"), "success");
+            }
         }
 
         // ===== PERSISTENCE =====
@@ -341,32 +489,40 @@ namespace EasySave.Core.ViewModels
 
         private void LoadConfig()
         {
-            if (!File.Exists(_configPath)) { _config = new AppConfig(); ApplyLogFormat(); return; }
+            if (!File.Exists(_configPath)) { _config = new AppConfig(); ApplyConfig(); return; }
             try
             {
-                string json = File.ReadAllText(_configPath);
-                if (string.IsNullOrWhiteSpace(json)) { _config = new AppConfig(); ApplyLogFormat(); return; }
-                json = json.TrimStart();
+                string json = File.ReadAllText(_configPath).TrimStart();
+                if (string.IsNullOrWhiteSpace(json)) { _config = new AppConfig(); ApplyConfig(); return; }
 
-                if (json.StartsWith("["))
+                _config = json.StartsWith("[")
+                    ? new AppConfig { Jobs = JsonSerializer.Deserialize<List<BackupJob>>(json, _jsonOpts) ?? new() }
+                    : JsonSerializer.Deserialize<AppConfig>(json, _jsonOpts) ?? new AppConfig();
+
+                var referenceConfig = new AppConfig();
+
+                if (_config.DockerUrl != referenceConfig.DockerUrl)
                 {
-                    var jobs = JsonSerializer.Deserialize<List<BackupJob>>(json, _jsonOpts);
-                    _config = new AppConfig { Jobs = jobs ?? new() };
+                    _config.DockerUrl = referenceConfig.DockerUrl;
+                    SaveConfig();
                 }
-                else
-                    _config = JsonSerializer.Deserialize<AppConfig>(json, _jsonOpts) ?? new AppConfig();
+
             }
             catch { _config = new AppConfig(); }
-            ApplyLogFormat();
+            ApplyConfig();
         }
 
-        private void ApplyLogFormat() => LogService.Instance.SetLogFormat(_config.LogFormat);
+        private void ApplyConfig()
+        {
+            LogService.Instance.SetLogFormat(_config.LogFormat);
+            LogService.Instance.SetLogMode(_config.LogMode);
+            LogService.Instance.UpdateDockerUrl(_config.DockerUrl);
+        }
 
         private static EasyLog.Models.LogFormat ParseLogFormat(string? value)
-        {
-            if (string.IsNullOrWhiteSpace(value)) return EasyLog.Models.LogFormat.Json;
-            return value.Trim().ToLowerInvariant() is "xml" or "1" ? EasyLog.Models.LogFormat.Xml : EasyLog.Models.LogFormat.Json;
-        }
+            => value?.Trim().ToLowerInvariant() is "xml" or "1"
+                ? EasyLog.Models.LogFormat.Xml
+                : EasyLog.Models.LogFormat.Json;
 
         private void SaveConfig()
         {
@@ -376,7 +532,10 @@ namespace EasySave.Core.ViewModels
 
         // ===== HELPERS =====
         private void RefreshObservableJobs()
-        { Jobs.Clear(); foreach (var j in _config.Jobs) Jobs.Add(j); }
+        {
+            Jobs.Clear();
+            foreach (var j in _config.Jobs) Jobs.Add(j);
+        }
 
         private void OnPropertyChanged([CallerMemberName] string? name = null)
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
@@ -385,7 +544,8 @@ namespace EasySave.Core.ViewModels
         {
             _monitor.DetectionChanged -= OnBusinessSoftwareDetectionChanged;
             _monitor.Stop();
-            _currentCts?.Dispose();
+            foreach (var kvp in _runningJobs) kvp.Value.Dispose();
+            _runningJobs.Clear();
         }
     }
 }
