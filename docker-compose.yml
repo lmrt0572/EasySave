@@ -11,6 +11,9 @@ services:
     # Maps local port 8080 to container port 80
     ports:
       - "8080:8080"
+    # ===== TIME ZONE =====
+    environment:
+      - TZ=Europe/Paris
     # ===== PERSISTENT VOLUMES =====
     # Synchronizes your local PC folder with the container folder
     # This prevents logs from being deleted when the container stops

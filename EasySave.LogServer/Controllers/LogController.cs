@@ -25,6 +25,8 @@ namespace EasySave.LogServer.Controllers
         [HttpPost]
         public async Task<IActionResult> PostLog([FromBody] JsonElement rawEntry, [FromQuery] string machine)
         {
+            Console.WriteLine($"[SERVER] Log received at {DateTime.Now:HH:mm:ss} from Machine: {machine}");
+
             try
             {
                 // ===== FILE INITIALIZATION =====
