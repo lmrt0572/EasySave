@@ -64,11 +64,11 @@ namespace EasySave.LogServer.Controllers
                     System.IO.File.WriteAllText(filePath, json);
                 }
 
-                return Ok(new { message = "Log centralisé avec succès" });
+                return Ok(new { message = "Log centralized successfuly" });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, $"Erreur interne : {ex.Message}");
+                return StatusCode(500, $"Internal error: {ex.Message}");
             }
         }
     }
